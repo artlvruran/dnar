@@ -563,7 +563,8 @@ class SATGraphSampler:
 
             assignments = np.full(num_vars, -1, dtype=np.int32)
             trace = []
-            solved = _dpll(clauses, assignments, trace)
+            snapshots = []
+            solved = _dpll(clauses, assignments, trace, snapshots)
 
             if solved is None:
                 continue
