@@ -1,14 +1,14 @@
 algorithm: sat
 
 num_samples:
-  train: 10000
-  val: 320
-  test: 320
+  train: 2000
+  val: 128
+  test: 128
 
 problem_size:
-  train: 16
-  val: 16
-  test: 64
+  train: 12
+  val: 12
+  test: 24
 
 sat_clause_ratio: 4.2
 sat_clause_width: 3
