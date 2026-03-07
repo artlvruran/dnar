@@ -562,12 +562,12 @@ class SATGraphSampler:
                 clauses.append(clause)
 
             assignments = np.full(num_vars, -1, dtype=np.int32)
-            trace = []
-            snapshots = []
-            solved = _dpll(clauses, assignments, trace, snapshots)
+            solved = _dpll(clauses, assignments, trace=[], snapshots=[])
 
             if solved is None:
                 continue
+
+            solved_assignment, _, _ = solved
 
             num_nodes = num_vars + num_clauses
             adj = np.zeros((num_nodes, num_nodes), dtype=np.float64)
@@ -578,7 +578,9 @@ class SATGraphSampler:
                     adj[var, clause_node] = polarity
                     adj[clause_node, var] = polarity
 
-            return SATProblemInstance(adj=adj, clauses=clauses, num_vars=num_vars, solution=solved)
+            return SATProblemInstance(
+                adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment
+            )
 
 
 class ErdosRenyiGraphSampler:
