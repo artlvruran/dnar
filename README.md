@@ -15,6 +15,7 @@ pip install -r requirements.txt
 - Minimum spanning tree (Prim's algorithm)
 - Maximum Independent Set (randomized)
 - Shortest paths (Dijkstra's algorithm)
+- Boolean satisfiability (SAT) solved directly with DPLL-style propagation and branching
 
 
 ### Train a single-task model

@@ -23,6 +23,8 @@ class Config:
     problem_size: dict = None
     edge_weights: bool = False
     generate_random_numbers: bool = False
+    sat_clause_ratio: float = 4.2
+    sat_clause_width: int = 3
 
     # --- model ---
     h: int = 128
