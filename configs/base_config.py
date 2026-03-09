@@ -12,7 +12,7 @@ class Config:
     learning_rate: float = 0.0001
     weight_decay: float = 0.0
     num_iterations: int = 1000
-    eval_each: int = 2
+    eval_each: int = 250
     stepwise_training: bool = True
     processor_upper_t: float = 3.
     processor_lower_t: float = 0.01
