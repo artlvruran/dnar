@@ -120,17 +120,43 @@ def sat(instance: SATProblemInstance):
     is_variable = np.zeros(n, dtype=np.int32)
     is_variable[: instance.num_vars] = 1
 
-    assigned_true = np.zeros(n, dtype=np.int32)
+    assigned_flag = np.zeros(n, dtype=np.int32)
     clause_satisfied = np.zeros(n, dtype=np.int32)
 
     self_loops = np.eye(n, dtype=np.int32)
-    cur_scalars = instance.adj[instance.edge_index[0], instance.edge_index[1]]
+
+    def compute_sender_scalars(assignments_vars):
+        rng = np.random.RandomState(0)
+        sender = np.zeros(n, dtype=np.float32)
+        for v in range(instance.num_vars):
+            if assignments_vars[v] == -1:
+                sender[v] = float(rng.rand())
+            else:
+                sender[v] = float(assignments_vars[v])
+        for ci, clause in enumerate(instance.clauses):
+            clause_node = instance.num_vars + ci
+            satisfied = 0
+            num_unassigned = 0
+            for var, is_positive in clause:
+                val = assignments_vars[var]
+                if val == -1:
+                    num_unassigned += 1
+                    continue
+                if val == (1 if is_positive else 0):
+                    satisfied = 1
+                    break
+            sender[clause_node] = 0.0 if satisfied else float(num_unassigned)
+        return sender
+
+    init_assignments = np.full(instance.num_vars, -1, dtype=np.int32)
+    cur_sender = compute_sender_scalars(init_assignments)
+    cur_scalars = cur_sender[instance.edge_index[0]]
 
     push_states(
         node_states,
         edge_states,
         scalars,
-        (is_variable, assigned_true, clause_satisfied),
+        (is_variable, assigned_flag, clause_satisfied),
         (self_loops,),
         (cur_scalars,),
     )
@@ -141,33 +167,40 @@ def sat(instance: SATProblemInstance):
     solution, trace, snapshots = solved
 
     for assignment_snapshot in snapshots:
-        assigned_true = np.zeros(n, dtype=np.int32)
-        is_assigned = assignment_snapshot != -1
-        assigned_true[: instance.num_vars][is_assigned] = assignment_snapshot[is_assigned]
-        clause_satisfied = _compute_clause_satisfied_from_assignments(
-            instance, assignment_snapshot
-        )
+        assigned_mask = (assignment_snapshot != -1).astype(np.int32)
+        assigned_flag = np.zeros(n, dtype=np.int32)
+        assigned_flag[: instance.num_vars] = assigned_mask
+
+        clause_satisfied = _compute_clause_satisfied_from_assignments(instance, assignment_snapshot)
+
+        cur_sender = compute_sender_scalars(assignment_snapshot)
+        cur_scalars = cur_sender[instance.edge_index[0]]
 
         push_states(
             node_states,
             edge_states,
             scalars,
-            (is_variable, assigned_true, clause_satisfied),
+            (is_variable, assigned_flag, clause_satisfied),
             (self_loops,),
             (cur_scalars,),
         )
 
-    assert np.all(solution != -1)
-
     min_steps = max(n, len(trace) + 1)
+    final_sender = compute_sender_scalars(solution)
+    final_scalars = final_sender[instance.edge_index[0]]
+    final_assigned_mask = (solution != -1).astype(np.int32)
+    final_assigned_flag = np.zeros(n, dtype=np.int32)
+    final_assigned_flag[: instance.num_vars] = final_assigned_mask
+    final_clause_satisfied = _compute_clause_satisfied_from_assignments(instance, solution)
+
     while len(node_states) < min_steps:
         push_states(
             node_states,
             edge_states,
             scalars,
-            (is_variable, assigned_true, clause_satisfied),
+            (is_variable, final_assigned_flag, final_clause_satisfied),
             (self_loops,),
-            (cur_scalars,),
+            (final_scalars,),
         )
 
     return np.array(node_states), np.array(edge_states), np.array(scalars)
@@ -199,6 +232,8 @@ def sat_instance_from_cnf(cnf_clauses, num_vars):
             polarity = 1.0 if is_positive else -1.0
             adj[var, clause_node] = polarity
             adj[clause_node, var] = polarity
+            
+    np.fill_diagonal(adj, 1.0)
 
     return SATProblemInstance(
         adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment
