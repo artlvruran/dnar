@@ -173,6 +173,38 @@ def sat(instance: SATProblemInstance):
     return np.array(node_states), np.array(edge_states), np.array(scalars)
 
 
+def sat_instance_from_cnf(cnf_clauses, num_vars):
+    clauses = []
+    for clause in cnf_clauses:
+        parsed_clause = []
+        for literal in clause:
+            assert literal != 0
+            var = abs(int(literal)) - 1
+            assert 0 <= var < num_vars
+            is_positive = literal > 0
+            parsed_clause.append((var, is_positive))
+        clauses.append(parsed_clause)
+
+    assignments = np.full(num_vars, -1, dtype=np.int32)
+    solved = _dpll(clauses, assignments, trace=[], snapshots=[])
+    if solved is None:
+        raise ValueError('Provided CNF formula is unsatisfiable.')
+    solved_assignment, _, _ = solved
+
+    num_nodes = num_vars + len(clauses)
+    adj = np.zeros((num_nodes, num_nodes), dtype=np.float64)
+    for clause_idx, clause in enumerate(clauses):
+        clause_node = num_vars + clause_idx
+        for var, is_positive in clause:
+            polarity = 1.0 if is_positive else -1.0
+            adj[var, clause_node] = polarity
+            adj[clause_node, var] = polarity
+
+    return SATProblemInstance(
+        adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment
+    )
+
+
 def bfs(instance: ProblemInstance):
     n = instance.adj.shape[0]
     node_states = []
