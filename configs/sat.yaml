@@ -19,5 +19,5 @@ num_edge_states: 1
 output_type: node_mask
 output_idx: 1
 
-num_iterations: int = 13
-eval_each: int = 2
+num_iterations:  13
+eval_each: 2
