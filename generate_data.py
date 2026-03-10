@@ -105,8 +105,7 @@ def sat(instance: ProblemInstance):
 
     self_loops = np.eye(n, dtype=np.int32)
 
-    is_variable = np.zeros(n, dtype=np.int32)
-    is_variable[: instance.num_vars] = 1
+    is_assigned = np.zeros(n, dtype=np.int32)
     assigned_true = np.zeros(n, dtype=np.int32)
 
     cur_scalars = instance.adj[instance.edge_index[0], instance.edge_index[1]]
@@ -115,7 +114,7 @@ def sat(instance: ProblemInstance):
         node_states,
         edge_states,
         scalars,
-        (is_variable, assigned_true),
+        (is_assigned, assigned_true),
         (self_loops,),
         (cur_scalars,),
     )
@@ -128,15 +127,18 @@ def sat(instance: ProblemInstance):
     solution, trace, snapshots = solved
 
     for assignment_snapshot in snapshots:
+        is_assigned = np.zeros(n, dtype=np.int32)
         assigned_true = np.zeros(n, dtype=np.int32)
-        is_assigned = assignment_snapshot != -1
-        assigned_true[: instance.num_vars][is_assigned] = assignment_snapshot[is_assigned]
+        var_mask = assignment_snapshot != -1
 
+        is_assigned[: instance.num_vars][var_mask] = 1
+        assigned_true[: instance.num_vars][var_mask] = assignment_snapshot[var_mask]
+        
         push_states(
             node_states,
             edge_states,
             scalars,
-            (is_variable, assigned_true),
+            (is_assigned, assigned_true),
             (self_loops,),
             (cur_scalars,),
         )
