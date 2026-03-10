@@ -64,29 +64,29 @@ def _unit_propagate(clauses, assignments, trace, snapshots):
                         return False
         return True
 
-    def _dpll(clauses, assignments, trace, snapshots):
-        if not _unit_propagate(clauses, assignments, trace, snapshots):
-            return None
-
-        if np.all(assignments != -1):
-            return np.copy(assignments), trace, snapshots
-
-        branch_var = np.where(assignments == -1)[0][0]
-
-        for value in (1, 0):
-            next_assignments = np.copy(assignments)
-            next_trace = trace.copy()
-            next_snapshots = snapshots.copy()
-
-            next_assignments[branch_var] = value
-            next_trace.append((branch_var, value, 0))
-            next_snapshots.append(np.copy(next_assignments))
-
-            result = _dpll(clauses, next_assignments, next_trace, next_snapshots)
-            if result is not None:
-                return result
-
+def _dpll(clauses, assignments, trace, snapshots):
+    if not _unit_propagate(clauses, assignments, trace, snapshots):
         return None
+
+    if np.all(assignments != -1):
+        return np.copy(assignments), trace, snapshots
+
+    branch_var = np.where(assignments == -1)[0][0]
+
+    for value in (1, 0):
+        next_assignments = np.copy(assignments)
+        next_trace = trace.copy()
+        next_snapshots = snapshots.copy()
+
+        next_assignments[branch_var] = value
+        next_trace.append((branch_var, value, 0))
+        next_snapshots.append(np.copy(next_assignments))
+
+        result = _dpll(clauses, next_assignments, next_trace, next_snapshots)
+        if result is not None:
+            return result
+
+    return None
 
 def sat(instance: ProblemInstance):
     n = instance.adj.shape[0]
