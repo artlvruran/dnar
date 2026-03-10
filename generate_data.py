@@ -97,7 +97,7 @@ def _dpll(clauses, assignments, trace, snapshots):
 
     return None
 
-def sat(instance: ProblemInstance):
+def sat(instance: SATProblemInstance):
     n = instance.adj.shape[0]
     node_states = []
     edge_states = []
@@ -145,7 +145,7 @@ def sat(instance: ProblemInstance):
 
     assert np.all(solution != -1)
 
-    min_steps = max(n, len(trace) + 1)
+    min_steps = max(instance.num_vars, len(trace) + 1)
     while len(node_states) < min_steps:
         push_states(
             node_states,
@@ -648,15 +648,20 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
         output_fts = edge_fts if config.output_type == "pointer" else node_fts
         y = output_fts[:, -1, config.output_idx].clone().detach()
 
-        datapoints.append(
-            Data(
-                node_fts=node_fts,
-                edge_fts=edge_fts,
-                scalars=scalars,
-                edge_index=edge_index,
-                y=y,
-            ).to(device)
-        )
+        data_kwargs = {
+            "node_fts": node_fts,
+            "edge_fts": edge_fts,
+            "scalars": scalars,
+            "edge_index": edge_index,
+            "y": y,
+        }
+
+        if config.algorithm == "sat":
+            node_loss_mask = torch.zeros(node_fts.shape[0], dtype=torch.bool)
+            node_loss_mask[: instance.num_vars] = True
+            data_kwargs["node_loss_mask"] = node_loss_mask
+
+        datapoints.append(Data(**data_kwargs).to(device))
     return DataLoader(datapoints, batch_size=config.batch_size, shuffle=True)
 
 
