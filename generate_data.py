@@ -151,7 +151,7 @@ def sat(instance: ProblemInstance):
             node_states,
             edge_states,
             scalars,
-            (is_variable, assigned_true),
+            (is_assigned, assigned_true),
             (self_loops,),
             (cur_scalars,),
         )
