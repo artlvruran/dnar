@@ -24,6 +24,15 @@ class ProblemInstance:
         random_pos = np.random.uniform(0.0, 1.0, (adj.shape[0],))
         self.pos = random_pos[np.argsort(random_pos)]
 
+
+class SATProblemInstance(ProblemInstance):
+    def __init__(self, adj, clauses, num_vars, solution):
+        super().__init__(adj=adj, start=0, weighted=True, randomness=np.zeros((1, 1)))
+        self.clauses = clauses
+        self.num_vars = num_vars
+        self.num_clauses = len(clauses)
+        self.solution = np.array(solution, dtype=np.int32)
+
 def push_states(
     node_states, edge_states, scalars, cur_step_nodes, cur_step_edges, cur_step_scalars
 ):
