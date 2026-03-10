@@ -31,30 +31,7 @@ def push_states(
     edge_states.append(np.stack(cur_step_edges, axis=-1))
     scalars.append(np.stack(cur_step_scalars, axis=-1))
 
-def sat(instance: ProblemInstance):
-    n = instance.adj.shape[0]
-    node_states = []
-    edge_states = []
-    scalars = []
-
-    self_loops = np.eye(n, dtype=np.int32)
-
-    is_variable = np.zeros(n, dtype=np.int32)
-    is_variable[: instance.num_vars] = 1
-    assigned_true = np.zeros(n, dtype=np.int32)
-
-    cur_scalars = instance.adj[instance.edge_index[0], instance.edge_index[1]]
-
-    push_states(
-        node_states,
-        edge_states,
-        scalars,
-        (is_variable, assigned_true),
-        (self_loops,),
-        (cur_scalars,),
-    )
-
-    def _unit_propagate(clauses, assignments, trace, snapshots):
+def _unit_propagate(clauses, assignments, trace, snapshots):
         changed = True
         while changed:
             changed = False
@@ -110,6 +87,31 @@ def sat(instance: ProblemInstance):
                 return result
 
         return None
+
+def sat(instance: ProblemInstance):
+    n = instance.adj.shape[0]
+    node_states = []
+    edge_states = []
+    scalars = []
+
+    self_loops = np.eye(n, dtype=np.int32)
+
+    is_variable = np.zeros(n, dtype=np.int32)
+    is_variable[: instance.num_vars] = 1
+    assigned_true = np.zeros(n, dtype=np.int32)
+
+    cur_scalars = instance.adj[instance.edge_index[0], instance.edge_index[1]]
+
+    push_states(
+        node_states,
+        edge_states,
+        scalars,
+        (is_variable, assigned_true),
+        (self_loops,),
+        (cur_scalars,),
+    )
+
+    
 
     initial_assignments = np.full(instance.num_vars, -1, dtype=np.int32)
     solved = _dpll(instance.clauses, initial_assignments, trace=[], snapshots=[])
