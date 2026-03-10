@@ -13,7 +13,7 @@ problem_size:
 sat_clause_ratio: 4.2
 sat_clause_width: 3
 
-num_node_states: 3
+num_node_states: 2
 num_edge_states: 1
 
 output_type: node_mask
