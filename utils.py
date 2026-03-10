@@ -67,6 +67,8 @@ def pointer_accuracy_graph_level(graph, prediction):
 
 def node_mask_accuracy(graph, prediction):
     pred_mask = prediction > 0.0
+    if hasattr(graph, "node_loss_mask"):
+        return (1.0 * (pred_mask[graph.node_loss_mask] == graph.y[graph.node_loss_mask])).mean()
     return (1.0 * (pred_mask == graph.y)).mean()
 
 
