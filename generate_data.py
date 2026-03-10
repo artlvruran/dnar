@@ -656,11 +656,6 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
             "y": y,
         }
 
-        if config.algorithm == "sat":
-            node_loss_mask = torch.zeros(node_fts.shape[0], dtype=torch.bool)
-            node_loss_mask[: instance.num_vars] = True
-            data_kwargs["node_loss_mask"] = node_loss_mask
-
         datapoints.append(Data(**data_kwargs).to(device))
 
     

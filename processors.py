@@ -301,13 +301,7 @@ class StatesBottleneck(torch.nn.Module):
                             weight = num_nodes
                         ce_loss = weight * node_pointer_loss(logits, gt, index)
                     else:
-                        if group == 0 and hasattr(batch, "node_loss_mask"):
-                            ce_loss = binary_cross_entropy_with_logits(
-                                logits[batch.node_loss_mask],
-                                gt[batch.node_loss_mask],
-                            )
-                        else:
-                            ce_loss = binary_cross_entropy_with_logits(logits, gt)
+                        ce_loss = binary_cross_entropy_with_logits(logits, gt)
 
                     loss += ce_loss
 
