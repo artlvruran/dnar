@@ -31,6 +31,122 @@ def push_states(
     edge_states.append(np.stack(cur_step_edges, axis=-1))
     scalars.append(np.stack(cur_step_scalars, axis=-1))
 
+def sat(instance: ProblemInstance):
+    n = instance.adj.shape[0]
+    node_states = []
+    edge_states = []
+    scalars = []
+
+    self_loops = np.eye(n, dtype=np.int32)
+
+    is_variable = np.zeros(n, dtype=np.int32)
+    is_variable[: instance.num_vars] = 1
+    assigned_true = np.zeros(n, dtype=np.int32)
+
+    cur_scalars = instance.adj[instance.edge_index[0], instance.edge_index[1]]
+
+    push_states(
+        node_states,
+        edge_states,
+        scalars,
+        (is_variable, assigned_true),
+        (self_loops,),
+        (cur_scalars,),
+    )
+
+    def _unit_propagate(clauses, assignments, trace, snapshots):
+        changed = True
+        while changed:
+            changed = False
+            for clause in clauses:
+                clause_satisfied = False
+                unassigned = []
+                for var, is_positive in clause:
+                    if assignments[var] == -1:
+                        unassigned.append((var, is_positive))
+                        continue
+
+                    literal_value = assignments[var] == (1 if is_positive else 0)
+                    if literal_value:
+                        clause_satisfied = True
+                        break
+
+                if clause_satisfied:
+                    continue
+                if len(unassigned) == 0:
+                    return False
+                if len(unassigned) == 1:
+                    unit_var, unit_positive = unassigned[0]
+                    unit_value = 1 if unit_positive else 0
+                    if assignments[unit_var] == -1:
+                        assignments[unit_var] = unit_value
+                        trace.append((unit_var, unit_value, 1))
+                        snapshots.append(np.copy(assignments))
+                        changed = True
+                    elif assignments[unit_var] != unit_value:
+                        return False
+        return True
+
+    def _dpll(clauses, assignments, trace, snapshots):
+        if not _unit_propagate(clauses, assignments, trace, snapshots):
+            return None
+
+        if np.all(assignments != -1):
+            return np.copy(assignments), trace, snapshots
+
+        branch_var = np.where(assignments == -1)[0][0]
+
+        for value in (1, 0):
+            next_assignments = np.copy(assignments)
+            next_trace = trace.copy()
+            next_snapshots = snapshots.copy()
+
+            next_assignments[branch_var] = value
+            next_trace.append((branch_var, value, 0))
+            next_snapshots.append(np.copy(next_assignments))
+
+            result = _dpll(clauses, next_assignments, next_trace, next_snapshots)
+            if result is not None:
+                return result
+
+        return None
+
+    initial_assignments = np.full(instance.num_vars, -1, dtype=np.int32)
+    solved = _dpll(instance.clauses, initial_assignments, trace=[], snapshots=[])
+    assert solved is not None
+    solution, trace, snapshots = solved
+
+    for assignment_snapshot in snapshots:
+        assigned_true = np.zeros(n, dtype=np.int32)
+        is_assigned = assignment_snapshot != -1
+        assigned_true[: instance.num_vars][is_assigned] = assignment_snapshot[is_assigned]
+
+        push_states(
+            node_states,
+            edge_states,
+            scalars,
+            (is_variable, assigned_true),
+            (self_loops,),
+            (cur_scalars,),
+        )
+
+    assert np.all(solution != -1)
+
+    min_steps = max(n, len(trace) + 1)
+    while len(node_states) < min_steps:
+        push_states(
+            node_states,
+            edge_states,
+            scalars,
+            (is_variable, assigned_true),
+            (self_loops,),
+            (cur_scalars,),
+        )
+
+    return np.array(node_states), np.array(edge_states), np.array(scalars)
+
+
+
 def bfs(instance: ProblemInstance):
     n = instance.adj.shape[0]
     node_states = []
@@ -388,6 +504,59 @@ def er_probabilities(n):
     return (base, base * 3)
 
 
+class SATGraphSampler:
+    def __init__(self, config: base_config.Config):
+        self.clause_ratio = config.sat_clause_ratio
+        self.clause_width = config.sat_clause_width
+
+    def __call__(self, num_vars):
+        assert self.clause_width >= 2
+        num_clauses = max(1, int(self.clause_ratio * num_vars))
+
+        while True:
+            planted_solution = np.random.binomial(1, 0.5, size=(num_vars,))
+            clauses = []
+            for _ in range(num_clauses):
+                vars_in_clause = np.random.choice(
+                    num_vars, size=min(self.clause_width, num_vars), replace=False
+                )
+
+                while True:
+                    signs = np.random.binomial(1, 0.5, size=(len(vars_in_clause),))
+                    clause_is_satisfied = np.any(
+                        planted_solution[vars_in_clause] == signs
+                    )
+                    if clause_is_satisfied:
+                        break
+
+                clause = [
+                    (int(var), bool(sign))
+                    for var, sign in zip(vars_in_clause, signs, strict=True)
+                ]
+                clauses.append(clause)
+
+            assignments = np.full(num_vars, -1, dtype=np.int32)
+            solved = _dpll(clauses, assignments, trace=[], snapshots=[])
+
+            if solved is None:
+                continue
+
+            solved_assignment, _, _ = solved
+
+            num_nodes = num_vars + num_clauses
+            adj = np.zeros((num_nodes, num_nodes), dtype=np.float64)
+            for clause_idx, clause in enumerate(clauses):
+                clause_node = num_vars + clause_idx
+                for var, is_positive in clause:
+                    polarity = 1.0 if is_positive else -1.0
+                    adj[var, clause_node] = polarity
+                    adj[clause_node, var] = polarity
+
+            return SATProblemInstance(
+                adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment
+            )
+
+
 class ErdosRenyiGraphSampler:
     def __init__(self, config: base_config.Config):
         self.weighted = config.edge_weights
@@ -435,6 +604,7 @@ SPEC["dfs"] = (
 SPEC["mst"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["dijkstra"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["mis"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))  # MASK
+SPEC["sat"] = ((MASK, MASK), (MASK,))
 
 ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis, 'sat': sat}
 
