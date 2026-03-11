@@ -148,8 +148,7 @@ def sat(instance: ProblemInstance):
 
     assert np.all(solution != -1)
 
-    min_steps = max(instance.num_vars, len(trace) + 1)
-    while len(node_states) < min_steps:
+    while len(node_states) < n:
         push_states(
             node_states,
             edge_states,
