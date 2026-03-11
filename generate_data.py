@@ -83,17 +83,20 @@ def _dpll(clauses, assignments, trace, snapshots):
     branch_var = np.where(assignments == -1)[0][0]
 
     for value in (1, 0):
-        next_assignments = np.copy(assignments)
-        next_trace = trace.copy()
-        next_snapshots = snapshots.copy()
+        old_assignments = assignments.copy()
+        old_trace_len = len(trace)
 
-        next_assignments[branch_var] = value
-        next_trace.append((branch_var, value, 0))
-        next_snapshots.append(np.copy(next_assignments))
+        assignments[branch_var] = value
+        trace.append((branch_var, value, 0))
+        snapshots.append(assignments.copy())
 
-        result = _dpll(clauses, next_assignments, next_trace, next_snapshots)
+        result = _dpll(clauses, assignments, trace, snapshots)
         if result is not None:
             return result
+
+        assignments[:] = old_assignments
+        del trace[old_trace_len:]
+        snapshots.append(assignments.copy())
 
     return None
 
