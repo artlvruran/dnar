@@ -149,7 +149,7 @@ def sat(instance: ProblemInstance):
 
     assert np.all(solution != -1)
 
-    while len(node_states) < n:
+    while len(node_states) < instance.algorithm_steps:
         push_states(
             node_states,
             edge_states,
