@@ -16,6 +16,8 @@ sat_clause_width: 3
 num_node_states: 2
 num_edge_states: 1
 
+algorithm_steps: 100
+
 output_type: node_mask
 output_idx: 1
 

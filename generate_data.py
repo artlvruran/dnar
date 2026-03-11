@@ -26,11 +26,12 @@ class ProblemInstance:
 
 
 class SATProblemInstance(ProblemInstance):
-    def __init__(self, adj, clauses, num_vars, solution):
+    def __init__(self, adj, clauses, num_vars, solution, algorithm_steps):
         super().__init__(adj=adj, start=0, weighted=True, randomness=np.zeros((1, 1)))
         self.clauses = clauses
         self.num_vars = num_vars
         self.num_clauses = len(clauses)
+        self.algorithm_steps = algorithm_steps
         self.solution = np.array(solution, dtype=np.int32)
 
 def push_states(
@@ -523,6 +524,7 @@ class SATGraphSampler:
     def __init__(self, config: base_config.Config):
         self.clause_ratio = config.sat_clause_ratio
         self.clause_width = config.sat_clause_width
+        self.algorithm_steps = config.algorithm_steps
 
     def __call__(self, num_vars):
         assert self.clause_width >= 2
@@ -568,7 +570,7 @@ class SATGraphSampler:
                     adj[clause_node, var] = polarity
 
             return SATProblemInstance(
-                adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment
+                adj=adj, clauses=clauses, num_vars=num_vars, solution=solved_assignment, algorithm_steps=self.algorithm_steps
             )
 
 
