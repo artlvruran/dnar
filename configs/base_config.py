@@ -25,6 +25,7 @@ class Config:
     generate_random_numbers: bool = False
     sat_clause_ratio: float = 4.2
     sat_clause_width: int = 3
+    algorithm_steps: int = 100
 
     # --- model ---
     h: int = 128
