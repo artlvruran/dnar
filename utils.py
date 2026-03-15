@@ -159,25 +159,4 @@ def sat_model_output(
 
     with torch.no_grad():
         model.eval()
-        logits, _ = model(batch, training_step=-1)
-
-    node_scores = logits.cpu().numpy()
-    predicted_node_mask = (node_scores > 0.0).astype(np.int32)
-
-    num_clauses = clauses.shape[0]
-    selected_literals = []
-    selected_values = []
-    for clause_idx in range(num_clauses):
-        base = 3 * clause_idx
-        clause_scores = node_scores[base : base + 3]
-        local_idx = int(np.argmax(clause_scores))
-        selected_literals.append(local_idx)
-        selected_values.append(int(clauses[clause_idx, local_idx]))
-
-    return {
-        "clauses": clauses.tolist(),
-        "selected_literals": selected_literals,
-        "selected_values": selected_values,
-        "node_scores": node_scores.tolist(),
-        "predicted_node_mask": predicted_node_mask.tolist(),
-    }
+        return model(batch, training_step=-1)
