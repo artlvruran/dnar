@@ -56,7 +56,8 @@ def sat(instance_or_clauses):
                 sat_adj[j][i] = 1
 
     reduced_instance = ProblemInstance(sat_adj, start, weighted=False, randomness=randomness)
-    return mis(reduced_instance)
+    outputs = mis(reduced_instance)
+    return *outputs, reduced_instance
 
 
 
@@ -449,6 +450,17 @@ class ErdosRenyiGraphSampler:
 
             return instance
 
+class SatClauseSampler:
+    def __init__(self, config: base_config.Config):
+        self.generate_random_numbers = config.generate_random_numbers
+
+    def __call__(self, num_nodes):
+        num_clauses = max(1, num_nodes // 3)
+        num_vars = max(1, num_nodes)
+
+        clauses = np.random.randint(1, num_vars + 1, size=(num_clauses, 3))
+        signs = np.where(np.random.rand(num_clauses, 3) < 0.5, 1, -1)
+        return clauses * signs
 
 MASK = 0
 NODE_POINTER = 1
@@ -474,15 +486,19 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
 
     datapoints = []
     if config.algorithm == "sat":
-        sampler = SATGraphSampler(config)
+        sampler = SatClauseSampler(config)
     else:
         sampler = ErdosRenyiGraphSampler(config)
 
     for _ in tqdm.tqdm(
         range(config.num_samples[split]), f"Generate samples for {split}"
     ):
-        instance = sampler(config.problem_size[split])
-        node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
+        if config.algorithm == "sat":
+            clauses = sampler(config.problem_size[split])
+            node_fts, edge_fts, scalars, instance = sat(clauses, return_instance=True)
+        else:
+            instance = sampler(config.problem_size[split])
+            node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
 
         edge_index = torch.tensor(instance.edge_index).contiguous()
 
