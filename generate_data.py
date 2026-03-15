@@ -495,7 +495,7 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
     ):
         if config.algorithm == "sat":
             clauses = sampler(config.problem_size[split])
-            node_fts, edge_fts, scalars, instance = sat(clauses, return_instance=True)
+            node_fts, edge_fts, scalars, instance = sat(clauses)
         else:
             instance = sampler(config.problem_size[split])
             node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
