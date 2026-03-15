@@ -23,6 +23,14 @@ class ProblemInstance:
             self.out_nodes[x].append(y)
         random_pos = np.random.uniform(0.0, 1.0, (adj.shape[0],))
         self.pos = random_pos[np.argsort(random_pos)]
+
+def push_states(
+    node_states, edge_states, scalars, cur_step_nodes, cur_step_edges, cur_step_scalars
+):
+    node_states.append(np.stack(cur_step_nodes, axis=-1))
+    edge_states.append(np.stack(cur_step_edges, axis=-1))
+    scalars.append(np.stack(cur_step_scalars, axis=-1))
+
         
 def sat(instance_or_clauses):
     clauses = np.asarray(instance_or_clauses, dtype=np.int64)
