@@ -134,7 +134,7 @@ def sat_model_output(
     device: Optional[torch.device] = None,
 ) -> Dict[str, object]:
     clauses = np.asarray(clauses, dtype=np.int64)
-    node_fts, edge_fts, scalars, instance = sat(clauses, return_instance=True)
+    node_fts, edge_fts, scalars, instance = sat(clauses)
 
     edge_index = torch.tensor(instance.edge_index).contiguous()
     node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
