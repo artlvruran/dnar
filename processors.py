@@ -267,7 +267,6 @@ class StatesBottleneck(torch.nn.Module):
             [Linear(h, 1) for _ in range(config.num_edge_states)]
         )
         self.spec = SPEC[config.algorithm]
-        self.algorithm = config.algorithm
 
     def forward(
         self, node_fts, edge_fts, batch, training_step, processor_step, teacher_force
@@ -287,9 +286,6 @@ class StatesBottleneck(torch.nn.Module):
                 else batch.edge_fts[:, processor_step]
             )
 
-            if self.algorithm == "sat" and group == 0:
-                is_assigned_gt = hints[:, 0]
-
             for idx, projection in enumerate(projections):
                 logits = projection(fts).squeeze()
                 gt = hints[:, idx].double()
@@ -305,15 +301,7 @@ class StatesBottleneck(torch.nn.Module):
                             weight = num_nodes
                         ce_loss = weight * node_pointer_loss(logits, gt, index)
                     else:
-                        if self.algorithm == "sat" and group == 0 and idx == 1:
-                            mask = is_assigned_gt
-                            if mask.sum() > 0:
-                                ce_loss = binary_cross_entropy_with_logits(logits, gt, reduction='none')
-                                ce_loss = (ce_loss * mask).sum() / mask.sum()
-                            else:
-                                ce_loss = torch.tensor(0.0, device=logits.device)
-                        else:
-                            ce_loss = binary_cross_entropy_with_logits(logits, gt)
+                        ce_loss = binary_cross_entropy_with_logits(logits, gt)
 
                     loss += ce_loss
 
