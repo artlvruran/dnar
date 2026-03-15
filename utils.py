@@ -6,6 +6,8 @@ import numpy as np
 import torch
 from torch_geometric.utils import group_argsort, scatter, softmax
 from generate_data import ProblemInstance, dijkstra, sat
+from torch_geometric.data import Batch, Data
+from torch_geometric.utils import group_argsort
 
 
 def reverse_edge_index(edge_index):
