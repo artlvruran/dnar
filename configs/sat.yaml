@@ -6,9 +6,9 @@ num_samples:
   test: 128
 
 problem_size:
-  train: 5
-  val: 5
-  test: 5
+  train: 12
+  val: 12
+  test: 12
 
 sat_clause_ratio: 4.2
 sat_clause_width: 3
@@ -16,7 +16,7 @@ sat_clause_width: 3
 num_node_states: 2
 num_edge_states: 1
 
-algorithm_steps: 100
+algorithm_steps: 500
 
 output_type: node_mask
 output_idx: 1
