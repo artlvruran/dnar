@@ -123,3 +123,69 @@ class ModelSaver:
 NODE_POINTER_METRICS = (pointer_accuracy, pointer_accuracy_graph_level)
 NODE_MASK_METRICS = (node_mask_accuracy, node_mask_accuracy_graph_level)
 METRICS = {"pointer": NODE_POINTER_METRICS, "node_mask": NODE_MASK_METRICS}
+
+
+
+from typing import Optional, Tuple
+
+import numpy as np
+import torch
+from torch_geometric.data import Batch, Data
+
+from generate_data import ProblemInstance, dijkstra
+
+
+def dijkstra_model_output(
+    model,
+    adj_matrix,
+    start_node: int = 0,
+    device: Optional[torch.device] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    adj = np.asarray(adj_matrix, dtype=np.float64)
+    if adj.ndim != 2 or adj.shape[0] != adj.shape[1]:
+        raise ValueError("adj_matrix must be a square matrix")
+
+    n = adj.shape[0]
+    if n == 0:
+        raise ValueError("adj_matrix must contain at least one node")
+    if not (0 <= start_node < n):
+        raise ValueError("start_node must be in [0, num_nodes)")
+
+    weighted = not np.array_equal(adj, (adj > 0).astype(adj.dtype))
+    instance = ProblemInstance(
+        adj=adj,
+        start=start_node,
+        weighted=weighted,
+        randomness=np.zeros((n, n), dtype=np.float64),
+    )
+
+    node_fts, edge_fts, scalars = dijkstra(instance)
+
+    edge_index = torch.tensor(instance.edge_index).contiguous()
+    node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
+    edge_fts = torch.transpose(
+        torch.tensor(edge_fts)[:, edge_index[0], edge_index[1]], 0, 1
+    )
+    scalars = torch.transpose(torch.tensor(scalars), 0, 1)
+
+    y = edge_fts[:, -1, 0].clone().detach()
+
+    data = Data(
+        node_fts=node_fts,
+        edge_fts=edge_fts,
+        scalars=scalars,
+        edge_index=edge_index,
+        y=y,
+    )
+
+    if device is None:
+        device = next(model.parameters()).device
+
+    batch = Batch.from_data_list([data]).to(device)
+
+    with torch.no_grad():
+        model.eval()
+        logits, _ = model(batch, training_step=-1)
+
+    return logits.cpu(), batch.edge_index.cpu()
+
