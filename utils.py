@@ -1,9 +1,11 @@
 from collections import defaultdict
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
 from torch_geometric.utils import group_argsort, scatter, softmax
+from generate_data import ProblemInstance, dijkstra, sat
 
 
 def reverse_edge_index(edge_index):
