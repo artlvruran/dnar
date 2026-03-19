@@ -49,10 +49,11 @@ def train(config: base_config.Config, seed):
     model.train()
 
     steps = 0
-    train_start_time = time.perf_counter()
+    total_training_time = 0.0
     while steps <= config.num_iterations:
         for batch in train_data:
             steps += 1
+            iteration_start_time = time.perf_counter()
 
             _, loss = model(batch, writer, training_step=steps)
             assert not torch.isnan(loss)
@@ -61,6 +62,8 @@ def train(config: base_config.Config, seed):
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
             opt.zero_grad()
+
+            total_training_time += time.perf_counter() - iteration_start_time
 
             if steps % config.eval_each == 1:
                 evaluate(
@@ -75,7 +78,7 @@ def train(config: base_config.Config, seed):
 
             if steps >= config.num_iterations:
                 break
-    total_training_time = time.perf_counter() - train_start_time
+
     avg_iteration_time = total_training_time / steps if steps else 0.0
 
     print(f"Training finished in {total_training_time:.4f} seconds.")
