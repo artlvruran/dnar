@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import numpy as np
 import torch
@@ -41,12 +42,14 @@ def train(config: base_config.Config, seed):
     val_data = create_dataloader(config, "val", seed=seed + 1, device=device)
     test_data = create_dataloader(config, "test", seed=seed + 2, device=device)
 
+    writer = None
     if config.tensorboard_logs:
         writer = SummaryWriter(comment=f"-{model_name}")
 
     model.train()
 
     steps = 0
+    train_start_time = time.perf_counter()
     while steps <= config.num_iterations:
         for batch in train_data:
             steps += 1
@@ -72,6 +75,18 @@ def train(config: base_config.Config, seed):
 
             if steps >= config.num_iterations:
                 break
+    total_training_time = time.perf_counter() - train_start_time
+    avg_iteration_time = total_training_time / steps if steps else 0.0
+
+    print(f"Training finished in {total_training_time:.4f} seconds.")
+    print(f"Average iteration time: {avg_iteration_time:.6f} seconds.")
+
+    if writer is not None:
+        writer.add_scalar("Time/train_total_seconds", total_training_time, steps)
+        writer.add_scalar("Time/train_avg_iteration_seconds", avg_iteration_time, steps)
+        writer.flush()
+        writer.close()
+
     model.eval()
     return model
 
