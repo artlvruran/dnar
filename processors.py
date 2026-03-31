@@ -2,11 +2,21 @@ import torch
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch_geometric.utils import scatter
+from torch import nn
 
 from configs import base_config
 from generate_data import EDGE_MASK_ONE, MASK, NODE_MASK_ONE, NODE_POINTER, SPEC
 from utils import from_binary_states, gumbel_softmax, node_pointer_loss, temp_by_step
+from mamba_ssm import Mamba
 
+def _edge_scalar_column(scalars):
+    if not torch.is_tensor(scalars):
+        scalars = torch.tensor(scalars)
+    if scalars.dim() == 1:
+        return scalars.unsqueeze(-1)
+    if scalars.dim() == 2 and scalars.size(-1) == 1:
+        return scalars
+    return scalars.reshape(scalars.shape[0], -1)[:, :1]
 
 class StatesEncoder(torch.nn.Module):
     def __init__(self, h, num_binary_states):
@@ -40,114 +50,153 @@ class SelectBest(torch.nn.Module):
         return self.emb(state_with_best.long())
 
 
-class MambaMessagePassing(torch.nn.Module):
+def _pack_by_group(x, group_ids, secondary=None):
+    if secondary is None:
+        secondary = torch.arange(x.size(0), device=x.device)
+
+    group_ids = group_ids.long()
+    secondary = secondary.long()
+
+    if x.numel() == 0:
+        return (
+            x.new_zeros((0, 0, x.size(-1))),
+            torch.zeros((0, 0), dtype=torch.bool, device=x.device),
+            torch.empty(0, dtype=torch.long, device=x.device),
+        )
+
+    max_secondary = int(secondary.max().item()) + 1
+    order = torch.argsort(group_ids * max_secondary + secondary, stable=True)
+
+    x_sorted = x[order]
+    group_sorted = group_ids[order]
+    num_groups = int(group_sorted.max().item()) + 1
+    lengths = torch.bincount(group_sorted, minlength=num_groups)
+    max_len = int(lengths.max().item())
+
+    dense = x.new_zeros((num_groups, max_len, x.size(-1)))
+    mask = torch.zeros((num_groups, max_len), dtype=torch.bool, device=x.device)
+
+    start = 0
+    for g, l in enumerate(lengths.tolist()):
+        if l:
+            dense[g, :l] = x_sorted[start : start + l]
+            mask[g, :l] = True
+            start += l
+
+    inv = torch.empty_like(order)
+    inv[order] = torch.arange(order.numel(), device=x.device)
+    return dense, mask, inv
+
+
+def _unpack_by_group(dense, mask, inv):
+    return dense[mask][inv]
+
+
+class _MambaBlock(nn.Module):
+    def __init__(self, h, d_state=16, d_conv=4, expand=2):
+        super().__init__()
+        self.norm = nn.LayerNorm(h)
+        self.mamba = Mamba(
+            d_model=h,
+            d_state=d_state,
+            d_conv=d_conv,
+            expand=expand,
+        )
+
+    def forward(self, x):
+        x = x.float()
+        self.norm = self.norm.float()
+        self.mamba = self.mamba.float()
+        return x + self.mamba(self.norm(x))
+
+
+class MambaMessagePassing(nn.Module):
     def __init__(self, config: base_config.Config):
         super().__init__()
         h = config.h
-        import importlib
+        self.h = h
 
-        self.mamba = importlib.import_module("mamba_ssm").Mamba(
-            d_model=h,
-            d_state=getattr(config, "mamba_d_state", 16),
-            d_conv=getattr(config, "mamba_d_conv", 4),
-            expand=getattr(config, "mamba_expand", 2),
-        ).float()
-
-        self.edge_states_encoder = StatesEncoder(config.h, config.num_edge_states)
-        self.sender_states_encoder = StatesEncoder(config.h, config.num_node_states)
+        self.edge_states_encoder = StatesEncoder(h, config.num_edge_states)
+        self.node_states_encoder = StatesEncoder(h, config.num_node_states)
+        self.static_fts_encoder = StatesEncoder(h, 2)
 
         self.select_best_virtual = SelectBest(config)
 
-        self.static_fts_encoder = StatesEncoder(h, 2)
-        self.combine_fts = Linear(4 * h, h, bias=False)
+        self.node_scalar_proj = Linear(1, h, bias=False)
+        self.edge_in = Linear(5 * h, h, bias=False)
+
+        self.node_mamba = _MambaBlock(
+            h,
+            d_state=getattr(config, "mamba_d_state", 16),
+            d_conv=getattr(config, "mamba_d_conv", 4),
+            expand=getattr(config, "mamba_expand", 2),
+        )
+        self.edge_mamba = _MambaBlock(
+            h,
+            d_state=getattr(config, "mamba_d_state", 16),
+            d_conv=getattr(config, "mamba_d_conv", 4),
+            expand=getattr(config, "mamba_expand", 2),
+        )
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
-        node_fts = self.select_best_from_virtual(node_states, scalars, batch)
-        edge_fts = self.combined_edge_fts(node_states, edge_states, scalars, batch)
-        message = self.compute_message(edge_fts, batch)
+        scalars = _edge_scalar_column(scalars).float()
 
-        node_fts = node_fts + scatter(message, index=batch.edge_index[1])
-        edge_fts = edge_fts + message
-        return node_fts, edge_fts
+        node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
+        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(node_tokens.dtype)
+        node_tokens = node_tokens + self.node_scalar_proj(node_self_scalars)
 
-    def _get_layout(self, batch):
-        cached = getattr(batch, "_mamba_layout", None)
-        if cached is not None:
-            return cached
+        node_ids = getattr(batch, "batch", None)
+        if node_ids is None:
+            node_ids = torch.zeros(
+                node_tokens.size(0), dtype=torch.long, device=node_tokens.device
+            )
 
-        edge_index = batch.edge_index
-        sender_idx = edge_index[0].long()
-        receiver_idx = edge_index[1].long()
-
-        if sender_idx.numel() == 0:
-            layout = {
-                "is_empty": True,
-            }
-            batch._mamba_layout = layout
-            return layout
-
-        max_sender = int(sender_idx.max().item()) + 1
-        sort_key = receiver_idx * max_sender + sender_idx
-        order = torch.argsort(sort_key, stable=True)
-        sorted_receivers = receiver_idx[order]
-
-        _, lengths = torch.unique_consecutive(sorted_receivers, return_counts=True)
-        num_groups = int(lengths.shape[0])
-        max_len = int(lengths.max().item())
-        total = int(order.shape[0])
-
-        group_ids = torch.repeat_interleave(
-            torch.arange(num_groups, device=order.device), lengths
+        node_dense, node_mask, node_inv = _pack_by_group(
+            node_tokens,
+            node_ids,
+            secondary=torch.arange(node_tokens.size(0), device=node_tokens.device),
         )
-        starts = torch.cumsum(lengths, dim=0) - lengths
-        edge_positions = torch.arange(total, device=order.device) - torch.repeat_interleave(
-            starts, lengths
+        node_dense = node_dense.float()
+        node_dense = self.node_mamba(node_dense)
+        node_ctx = _unpack_by_group(node_dense, node_mask, node_inv)
+
+        edge_emb = self.edge_states_encoder(edge_states)
+        sender = node_ctx[batch.edge_index[0]]
+        receiver = node_ctx[batch.edge_index[1]]
+        rev_edge = edge_emb[batch.batched_reverse_idx]
+        static_fts = self.compute_static_fts(scalars, batch)
+
+        edge_tokens = self.edge_in(
+            torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
         )
 
-        inverse_order = torch.empty_like(order)
-        inverse_order[order] = torch.arange(total, device=order.device)
-
-        layout = {
-            "is_empty": False,
-            "order": order,
-            "inverse_order": inverse_order,
-            "group_ids": group_ids,
-            "edge_positions": edge_positions,
-            "num_groups": num_groups,
-            "max_len": max_len,
-        }
-        batch._mamba_layout = layout
-        return layout
-
-    def compute_message(self, edge_inputs, batch):
-        if edge_inputs.shape[0] == 0:
-            return edge_inputs
-
-        layout = self._get_layout(batch)
-        if layout["is_empty"]:
-            return edge_inputs
-
-        order = layout["order"]
-        sorted_inputs = edge_inputs[order]
-        padded_sequences = torch.zeros(
-            (layout["num_groups"], layout["max_len"], sorted_inputs.shape[-1]),
-            device=sorted_inputs.device,
-            dtype=sorted_inputs.dtype,
+        edge_dense, edge_mask, edge_inv = _pack_by_group(
+            edge_tokens,
+            batch.edge_index[1],
+            secondary=batch.edge_index[0],
         )
-        padded_sequences[layout["group_ids"], layout["edge_positions"]] = sorted_inputs
+        edge_dense = edge_dense.float()
+        edge_dense = self.edge_mamba(edge_dense)
+        edge_ctx = _unpack_by_group(edge_dense, edge_mask, edge_inv)
 
-        mamba_dtype = next(self.mamba.parameters()).dtype
-        mamba_out = self.mamba(padded_sequences.to(mamba_dtype)).to(edge_inputs.dtype)
-        packed_outputs = mamba_out[layout["group_ids"], layout["edge_positions"]]
-        return packed_outputs[layout["inverse_order"]]
+        node_ctx = node_ctx + scatter(
+            edge_ctx,
+            index=batch.edge_index[1],
+            dim=0,
+            dim_size=node_ctx.size(0),
+            reduce="sum",
+        )
+
+        return node_ctx, edge_ctx
 
     def compute_static_fts(self, scalars, batch):
+        scalars = _edge_scalar_column(scalars).float()
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
         sender_s = node_scalars[batch.edge_index[0]]
-        reciever_s = node_scalars[batch.edge_index[1]]
+        receiver_s = node_scalars[batch.edge_index[1]]
 
-        rlx = scalars < reciever_s
-        rlx_d = sender_s + scalars < reciever_s
+        rlx = scalars < receiver_s
+        rlx_d = sender_s + scalars < receiver_s
 
         fts = torch.cat([rlx, rlx_d], dim=-1).long()
         return self.static_fts_encoder(fts)
@@ -158,16 +207,11 @@ class MambaMessagePassing(torch.nn.Module):
 
     def combined_edge_fts(self, node_states, edge_states, scalars, batch):
         edge_fts = self.edge_states_encoder(edge_states)
-        sender_fts = self.sender_states_encoder(node_states[batch.edge_index[0]])
+        sender_fts = self.node_states_encoder(node_states[batch.edge_index[0]])
         static_fts = self.compute_static_fts(scalars, batch)
-        return self.combine_fts(
+        return self.edge_in(
             torch.cat(
-                [
-                    sender_fts,
-                    edge_fts,
-                    edge_fts[batch.batched_reverse_idx],
-                    static_fts,
-                ],
+                [sender_fts, edge_fts, edge_fts[batch.batched_reverse_idx], static_fts],
                 dim=1,
             )
         )
