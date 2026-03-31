@@ -1,7 +1,6 @@
 import torch
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
-from torch.nn.utils.rnn import pad_sequence
 from torch_geometric.utils import scatter
 
 from configs import base_config
@@ -65,40 +64,82 @@ class MambaMessagePassing(torch.nn.Module):
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         node_fts = self.select_best_from_virtual(node_states, scalars, batch)
         edge_fts = self.combined_edge_fts(node_states, edge_states, scalars, batch)
-        message = self.compute_message(edge_fts, batch.edge_index)
+        message = self.compute_message(edge_fts, batch)
 
         node_fts = node_fts + scatter(message, index=batch.edge_index[1])
         edge_fts = edge_fts + message
         return node_fts, edge_fts
 
-    def compute_message(self, edge_inputs, edge_index):
-        if edge_inputs.shape[0] == 0:
-            return edge_inputs
+    def _get_layout(self, batch):
+        cached = getattr(batch, "_mamba_layout", None)
+        if cached is not None:
+            return cached
 
+        edge_index = batch.edge_index
         sender_idx = edge_index[0].long()
         receiver_idx = edge_index[1].long()
+
+        if sender_idx.numel() == 0:
+            layout = {
+                "is_empty": True,
+            }
+            batch._mamba_layout = layout
+            return layout
+
         max_sender = int(sender_idx.max().item()) + 1
         sort_key = receiver_idx * max_sender + sender_idx
         order = torch.argsort(sort_key, stable=True)
-        sorted_inputs = edge_inputs[order]
         sorted_receivers = receiver_idx[order]
 
-        num_receivers = int(receiver_idx.max().item()) + 1
-        counts = torch.bincount(sorted_receivers, minlength=num_receivers)
-        lengths = counts[counts > 0]
+        _, lengths = torch.unique_consecutive(sorted_receivers, return_counts=True)
+        num_groups = int(lengths.shape[0])
+        max_len = int(lengths.max().item())
+        total = int(order.shape[0])
 
-        sequences = list(torch.split(sorted_inputs, lengths.tolist()))
-        padded_sequences = pad_sequence(sequences, batch_first=True)
-        mamba_dtype = next(self.mamba.parameters()).dtype
-        mamba_out = self.mamba(padded_sequences.to(mamba_dtype)).to(edge_inputs.dtype)
-
-        packed_outputs = torch.cat(
-            [mamba_out[i, :length] for i, length in enumerate(lengths.tolist())], dim=0
+        group_ids = torch.repeat_interleave(
+            torch.arange(num_groups, device=order.device), lengths
+        )
+        starts = torch.cumsum(lengths, dim=0) - lengths
+        edge_positions = torch.arange(total, device=order.device) - torch.repeat_interleave(
+            starts, lengths
         )
 
-        unsorted_outputs = torch.zeros_like(edge_inputs)
-        unsorted_outputs[order] = packed_outputs
-        return unsorted_outputs
+        inverse_order = torch.empty_like(order)
+        inverse_order[order] = torch.arange(total, device=order.device)
+
+        layout = {
+            "is_empty": False,
+            "order": order,
+            "inverse_order": inverse_order,
+            "group_ids": group_ids,
+            "edge_positions": edge_positions,
+            "num_groups": num_groups,
+            "max_len": max_len,
+        }
+        batch._mamba_layout = layout
+        return layout
+
+    def compute_message(self, edge_inputs, batch):
+        if edge_inputs.shape[0] == 0:
+            return edge_inputs
+
+        layout = self._get_layout(batch)
+        if layout["is_empty"]:
+            return edge_inputs
+
+        order = layout["order"]
+        sorted_inputs = edge_inputs[order]
+        padded_sequences = torch.zeros(
+            (layout["num_groups"], layout["max_len"], sorted_inputs.shape[-1]),
+            device=sorted_inputs.device,
+            dtype=sorted_inputs.dtype,
+        )
+        padded_sequences[layout["group_ids"], layout["edge_positions"]] = sorted_inputs
+
+        mamba_dtype = next(self.mamba.parameters()).dtype
+        mamba_out = self.mamba(padded_sequences.to(mamba_dtype)).to(edge_inputs.dtype)
+        packed_outputs = mamba_out[layout["group_ids"], layout["edge_positions"]]
+        return packed_outputs[layout["inverse_order"]]
 
     def compute_static_fts(self, scalars, batch):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
