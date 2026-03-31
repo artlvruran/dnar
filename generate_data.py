@@ -24,13 +24,49 @@ class ProblemInstance:
         random_pos = np.random.uniform(0.0, 1.0, (adj.shape[0],))
         self.pos = random_pos[np.argsort(random_pos)]
 
-
 def push_states(
     node_states, edge_states, scalars, cur_step_nodes, cur_step_edges, cur_step_scalars
 ):
     node_states.append(np.stack(cur_step_nodes, axis=-1))
     edge_states.append(np.stack(cur_step_edges, axis=-1))
     scalars.append(np.stack(cur_step_scalars, axis=-1))
+
+        
+def sat(instance_or_clauses):
+    clauses = np.asarray(instance_or_clauses, dtype=np.int64)
+    randomness = np.random.rand(3 * clauses.shape[0], 3 * clauses.shape[0])
+    start = 0
+    if clauses.ndim != 2 or clauses.shape[1] != 3:
+        raise ValueError("clauses must have shape [num_clauses, 3]")
+    if clauses.size == 0:
+        raise ValueError("clauses must contain at least one clause")
+    if np.any(clauses == 0):
+        raise ValueError("literals must be non-zero integers")
+
+    num_clauses = clauses.shape[0]
+    num_nodes = 3 * num_clauses
+    sat_adj = np.zeros((num_nodes, num_nodes), dtype=np.int32)
+
+    flattened_literals = clauses.reshape(-1)
+
+    for clause_idx in range(num_clauses):
+        base = 3 * clause_idx
+        for i in range(3):
+            for j in range(i + 1, 3):
+                u, v = base + i, base + j
+                sat_adj[u][v] = 1
+                sat_adj[v][u] = 1
+
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            if flattened_literals[i] == -flattened_literals[j]:
+                sat_adj[i][j] = 1
+                sat_adj[j][i] = 1
+
+    reduced_instance = ProblemInstance(sat_adj, start, weighted=False, randomness=randomness)
+    outputs = mis(reduced_instance)
+    return *outputs, reduced_instance
+
 
 
 def bfs(instance: ProblemInstance):
@@ -422,6 +458,17 @@ class ErdosRenyiGraphSampler:
 
             return instance
 
+class SatClauseSampler:
+    def __init__(self, config: base_config.Config):
+        self.generate_random_numbers = config.generate_random_numbers
+
+    def __call__(self, num_nodes):
+        num_clauses = max(1, num_nodes // 3)
+        num_vars = max(1, num_nodes)
+
+        clauses = np.random.randint(1, num_vars + 1, size=(num_clauses, 3))
+        signs = np.where(np.random.rand(num_clauses, 3) < 0.5, 1, -1)
+        return clauses * signs
 
 MASK = 0
 NODE_POINTER = 1
@@ -437,21 +484,29 @@ SPEC["dfs"] = (
 SPEC["mst"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["dijkstra"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["mis"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))  # MASK
+SPEC["sat"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))
 
-ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis}
+ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis, 'sat': sat}
 
 
 def create_dataloader(config: base_config.Config, split: str, seed: int, device):
     np.random.seed(seed)
 
     datapoints = []
-    sampler = ErdosRenyiGraphSampler(config)
+    if config.algorithm == "sat":
+        sampler = SatClauseSampler(config)
+    else:
+        sampler = ErdosRenyiGraphSampler(config)
 
     for _ in tqdm.tqdm(
         range(config.num_samples[split]), f"Generate samples for {split}"
     ):
-        instance = sampler(config.problem_size[split])
-        node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
+        if config.algorithm == "sat":
+            clauses = sampler(config.problem_size[split])
+            node_fts, edge_fts, scalars, instance = sat(clauses)
+        else:
+            instance = sampler(config.problem_size[split])
+            node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
 
         edge_index = torch.tensor(instance.edge_index).contiguous()
 
@@ -464,15 +519,17 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
         output_fts = edge_fts if config.output_type == "pointer" else node_fts
         y = output_fts[:, -1, config.output_idx].clone().detach()
 
-        datapoints.append(
-            Data(
-                node_fts=node_fts,
-                edge_fts=edge_fts,
-                scalars=scalars,
-                edge_index=edge_index,
-                y=y,
-            ).to(device)
-        )
+        data_kwargs = {
+            "node_fts": node_fts,
+            "edge_fts": edge_fts,
+            "scalars": scalars,
+            "edge_index": edge_index,
+            "y": y,
+        }
+
+        datapoints.append(Data(**data_kwargs).to(device))
+
+    
     return DataLoader(datapoints, batch_size=config.batch_size, shuffle=True)
 
 

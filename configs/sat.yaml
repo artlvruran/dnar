@@ -1,0 +1,23 @@
+algorithm: sat
+
+num_samples:
+  train: 2000
+  val: 128
+  test: 128
+
+problem_size:
+  train: 12
+  val: 12
+  test: 12
+
+sat_clause_ratio: 4.2
+sat_clause_width: 3
+
+num_node_states: 2
+num_edge_states: 1
+
+algorithm_steps: 500
+
+output_type: node_mask
+output_idx: 1
+
