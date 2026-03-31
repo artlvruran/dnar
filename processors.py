@@ -1,6 +1,7 @@
 import torch
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
+from torch.nn.utils.rnn import pad_sequence
 from torch_geometric.utils import scatter
 
 from configs import base_config
@@ -44,6 +45,15 @@ class MambaMessagePassing(torch.nn.Module):
     def __init__(self, config: base_config.Config):
         super().__init__()
         h = config.h
+        import importlib
+
+        self.mamba = importlib.import_module("mamba_ssm").Mamba(
+            d_model=h,
+            d_state=getattr(config, "mamba_d_state", 16),
+            d_conv=getattr(config, "mamba_d_conv", 4),
+            expand=getattr(config, "mamba_expand", 2),
+        ).float()
+
         self.edge_states_encoder = StatesEncoder(config.h, config.num_edge_states)
         self.sender_states_encoder = StatesEncoder(config.h, config.num_node_states)
 
@@ -51,13 +61,6 @@ class MambaMessagePassing(torch.nn.Module):
 
         self.static_fts_encoder = StatesEncoder(h, 2)
         self.combine_fts = Linear(4 * h, h, bias=False)
-
-        # Mamba-style selective state update per incoming edge sequence.
-        self.delta_proj = Linear(h, h, bias=False)
-        self.input_proj = Linear(h, h, bias=False)
-        self.state_proj = Linear(h, h, bias=False)
-        self.direct_proj = Linear(h, h, bias=False)
-        self.out_proj = Linear(h, h, bias=False)
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         node_fts = self.select_best_from_virtual(node_states, scalars, batch)
@@ -69,32 +72,32 @@ class MambaMessagePassing(torch.nn.Module):
         return node_fts, edge_fts
 
     def compute_message(self, edge_inputs, edge_index):
-        num_edges = edge_inputs.shape[0]
-        device = edge_inputs.device
+        if edge_inputs.shape[0] == 0:
+            return edge_inputs
 
-        order = torch.argsort(edge_index[1], stable=True)
+        sender_idx = edge_index[0].long()
+        receiver_idx = edge_index[1].long()
+        max_sender = int(sender_idx.max().item()) + 1
+        sort_key = receiver_idx * max_sender + sender_idx
+        order = torch.argsort(sort_key, stable=True)
         sorted_inputs = edge_inputs[order]
-        sorted_receivers = edge_index[1][order]
+        sorted_receivers = receiver_idx[order]
 
-        deltas = torch.sigmoid(self.delta_proj(sorted_inputs))
-        inputs = self.input_proj(sorted_inputs)
-        state_updates = self.state_proj(sorted_inputs)
-        direct = self.direct_proj(sorted_inputs)
+        num_receivers = int(receiver_idx.max().item()) + 1
+        counts = torch.bincount(sorted_receivers, minlength=num_receivers)
+        lengths = counts[counts > 0]
 
-        hidden = torch.zeros_like(sorted_inputs)
-        prev_receiver = None
+        sequences = list(torch.split(sorted_inputs, lengths.tolist()))
+        padded_sequences = pad_sequence(sequences, batch_first=True)
+        mamba_dtype = next(self.mamba.parameters()).dtype
+        mamba_out = self.mamba(padded_sequences.to(mamba_dtype)).to(edge_inputs.dtype)
 
-        for idx in range(num_edges):
-            receiver = int(sorted_receivers[idx])
-            if prev_receiver is None or receiver != prev_receiver:
-                hidden[idx] = state_updates[idx]
-            else:
-                hidden[idx] = deltas[idx] * hidden[idx - 1] + inputs[idx]
-            prev_receiver = receiver
+        packed_outputs = torch.cat(
+            [mamba_out[i, :length] for i, length in enumerate(lengths.tolist())], dim=0
+        )
 
-        outputs = self.out_proj(hidden + direct)
-        unsorted_outputs = torch.zeros_like(outputs, device=device)
-        unsorted_outputs[order] = outputs
+        unsorted_outputs = torch.zeros_like(edge_inputs)
+        unsorted_outputs[order] = packed_outputs
         return unsorted_outputs
 
     def compute_static_fts(self, scalars, batch):
