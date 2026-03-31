@@ -1,9 +1,7 @@
-import math
-
 import torch
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
-from torch_geometric.utils import group_argsort, scatter, softmax
+from torch_geometric.utils import scatter
 
 from configs import base_config
 from generate_data import EDGE_MASK_ONE, MASK, NODE_MASK_ONE, NODE_POINTER, SPEC
@@ -42,72 +40,62 @@ class SelectBest(torch.nn.Module):
         return self.emb(state_with_best.long())
 
 
-class AttentionModule(torch.nn.Module):
+class MambaMessagePassing(torch.nn.Module):
     def __init__(self, config: base_config.Config):
         super().__init__()
         h = config.h
-        self.h = h
-
         self.edge_states_encoder = StatesEncoder(config.h, config.num_edge_states)
-
-        self.lin_query = Linear(h, h, bias=False)
-        self.lin_key = Linear(h, h, bias=False)
-        self.lin_value = Linear(h, h, bias=False)
-
-        self.edge_key = Linear(h, h, bias=False)
-        self.edge_value = Linear(h, h, bias=False)
+        self.sender_states_encoder = StatesEncoder(config.h, config.num_node_states)
 
         self.select_best_virtual = SelectBest(config)
-        self.select_best_by_reciever = SelectBest(config)
 
         self.static_fts_encoder = StatesEncoder(h, 2)
-        self.combine_fts = Linear(3 * h, h, bias=False)
+        self.combine_fts = Linear(4 * h, h, bias=False)
 
-        self.use_noise = config.use_noise
-        self.temp = (
-            config.processor_upper_t,
-            config.processor_lower_t,
-            config.num_iterations,
-            config.temp_on_eval,
-        )
+        # Mamba-style selective state update per incoming edge sequence.
+        self.delta_proj = Linear(h, h, bias=False)
+        self.input_proj = Linear(h, h, bias=False)
+        self.state_proj = Linear(h, h, bias=False)
+        self.direct_proj = Linear(h, h, bias=False)
+        self.out_proj = Linear(h, h, bias=False)
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         node_fts = self.select_best_from_virtual(node_states, scalars, batch)
-        edge_fts = self.edge_states_encoder(edge_states)
-
-        Q = self.lin_query(node_fts)
-        K = self.lin_key(node_fts)
-        V = self.lin_value(node_fts)
-
-        edge_K, edge_V = self.combined_edge_KV(node_states, edge_fts, scalars, batch)
-
-        message = self.compute_message(
-            Q=Q,
-            K=K,
-            V=V,
-            edge_K=edge_K,
-            edge_V=edge_V,
-            edge_index=batch.edge_index,
-            training_step=training_step,
-        )
+        edge_fts = self.combined_edge_fts(node_states, edge_states, scalars, batch)
+        message = self.compute_message(edge_fts, batch.edge_index)
 
         node_fts = node_fts + scatter(message, index=batch.edge_index[1])
         edge_fts = edge_fts + message
         return node_fts, edge_fts
 
-    def compute_message(self, Q, K, V, edge_K, edge_V, edge_index, training_step):
-        Q = Q[edge_index[1]]
-        K = K[edge_index[0]] + edge_K
-        V = V[edge_index[0]] + edge_V
+    def compute_message(self, edge_inputs, edge_index):
+        num_edges = edge_inputs.shape[0]
+        device = edge_inputs.device
 
-        alpha = (Q * K).sum(dim=-1) / math.sqrt(self.h)
+        order = torch.argsort(edge_index[1], stable=True)
+        sorted_inputs = edge_inputs[order]
+        sorted_receivers = edge_index[1][order]
 
-        tau = temp_by_step(training_step, *self.temp)
-        use_noise = self.use_noise and training_step != -1
+        deltas = torch.sigmoid(self.delta_proj(sorted_inputs))
+        inputs = self.input_proj(sorted_inputs)
+        state_updates = self.state_proj(sorted_inputs)
+        direct = self.direct_proj(sorted_inputs)
 
-        alpha = gumbel_softmax(alpha, edge_index[1], tau=tau, use_noise=use_noise)
+        hidden = torch.zeros_like(sorted_inputs)
+        prev_receiver = None
 
-        return V * alpha.view(-1, 1)
+        for idx in range(num_edges):
+            receiver = int(sorted_receivers[idx])
+            if prev_receiver is None or receiver != prev_receiver:
+                hidden[idx] = state_updates[idx]
+            else:
+                hidden[idx] = deltas[idx] * hidden[idx - 1] + inputs[idx]
+            prev_receiver = receiver
+
+        outputs = self.out_proj(hidden + direct)
+        unsorted_outputs = torch.zeros_like(outputs, device=device)
+        unsorted_outputs[order] = outputs
+        return unsorted_outputs
 
     def compute_static_fts(self, scalars, batch):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
@@ -124,22 +112,21 @@ class AttentionModule(torch.nn.Module):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
         return self.select_best_virtual(node_states, node_scalars, batch.batch)
 
-    def combined_edge_KV(self, node_states, edge_fts, scalars, batch):
-        select_best = self.select_best_by_reciever(
-            node_states[batch.edge_index[0]], scalars, batch.edge_index[1]
-        )
-
+    def combined_edge_fts(self, node_states, edge_states, scalars, batch):
+        edge_fts = self.edge_states_encoder(edge_states)
+        sender_fts = self.sender_states_encoder(node_states[batch.edge_index[0]])
         static_fts = self.compute_static_fts(scalars, batch)
-        combined = self.combine_fts(
+        return self.combine_fts(
             torch.cat(
-                [edge_fts, edge_fts[batch.batched_reverse_idx], static_fts], dim=1
+                [
+                    sender_fts,
+                    edge_fts,
+                    edge_fts[batch.batched_reverse_idx],
+                    static_fts,
+                ],
+                dim=1,
             )
         )
-
-        edge_K = self.edge_key(select_best)
-        edge_V = self.edge_value(combined)
-
-        return edge_K, edge_V
 
 
 class ScalarUpdater(torch.nn.Module):
@@ -328,7 +315,7 @@ class DiscreteProcessor(torch.nn.Module):
     def __init__(self, config: base_config.Config):
         super().__init__()
         h = config.h
-        self.message_passing = AttentionModule(config)
+        self.message_passing = MambaMessagePassing(config)
 
         self.node_ffn = Sequential(Linear(h, h), ReLU(), Linear(h, h), ReLU())
         self.edge_ffn = Sequential(Linear(2 * h, h), ReLU(), Linear(h, h), ReLU())
