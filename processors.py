@@ -441,13 +441,18 @@ class DiscreteProcessor(torch.nn.Module):
 
         loss = scalars_loss + states_loss
 
+        self.float()
+
         return node_states, edge_states, out_scalars, loss
 
     def ffn(self, node_fts, edge_fts, batch):
+        dtype = self.node_ffn[0].weight.dtype
+        node_fts = node_fts.to(dtype)
+        edge_fts = edge_fts.to(dtype)
+
         node_fts = node_fts + self.node_ffn(node_fts)
         edge_fts_with_reversed = torch.cat(
             [edge_fts, edge_fts[batch.batched_reverse_idx]], dim=1
         )
-
         edge_fts = edge_fts + self.edge_ffn(edge_fts_with_reversed)
         return node_fts, edge_fts
