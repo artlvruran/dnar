@@ -164,8 +164,9 @@ class MambaMessagePassing(torch.nn.Module):
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         scalars = _edge_scalar_column(scalars).float()
 
-        node_tokens = self.select_best_from_virtual(node_states, scalars, batch).float()
-        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].float()
+        linear_dtype = self.node_scalar_proj.weight.dtype
+        node_tokens = self.select_best_from_virtual(node_states, scalars, batch).to(linear_dtype)
+        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(linear_dtype)
         node_tokens = node_tokens + self.node_scalar_proj(node_self_scalars)
 
         node_ids = getattr(batch, "batch", None)
@@ -179,11 +180,11 @@ class MambaMessagePassing(torch.nn.Module):
             node_tokens, node_ids, node_order, self.node_mamba
         )
 
-        edge_emb = self.edge_states_encoder(edge_states).float()
+        edge_emb = self.edge_states_encoder(edge_states).to(linear_dtype)
         sender = node_ctx[batch.edge_index[0]]
         receiver = node_ctx[batch.edge_index[1]]
         rev_edge = edge_emb[batch.batched_reverse_idx]
-        static_fts = self.compute_static_fts(scalars, batch).float()
+        static_fts = self.compute_static_fts(scalars, batch).to(linear_dtype)
 
         edge_tokens = self.edge_in(
             torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
@@ -215,16 +216,17 @@ class MambaMessagePassing(torch.nn.Module):
         rlx_d = sender_s + scalars < reciever_s
 
         fts = torch.cat([rlx, rlx_d], dim=-1).long()
-        return self.static_fts_encoder(fts).float()
+        return self.static_fts_encoder(fts)
 
     def select_best_from_virtual(self, node_states, scalars, batch):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
         return self.select_best_virtual(node_states, node_scalars, batch.batch)
 
     def combined_edge_fts(self, node_states, edge_states, scalars, batch):
-        edge_fts = self.edge_states_encoder(edge_states)
-        sender_fts = self.node_states_encoder(node_states[batch.edge_index[0]])
-        static_fts = self.compute_static_fts(scalars, batch).float()
+        dtype = self.edge_in.weight.dtype
+        edge_fts = self.edge_states_encoder(edge_states).to(dtype)
+        sender_fts = self.node_states_encoder(node_states[batch.edge_index[0]]).to(dtype)
+        static_fts = self.compute_static_fts(scalars, batch).to(dtype)
         return self.edge_in(
             torch.cat(
                 [sender_fts, edge_fts, edge_fts[batch.batched_reverse_idx], static_fts],
@@ -270,8 +272,9 @@ class ScalarUpdater(torch.nn.Module):
         if self.scalars_only_as_input:
             return batch.scalars[:, processor_step], 0.0
 
-        node_fts = self.node_states_encoder(node_states).float()
-        edge_fts = self.edge_states_encoder(edge_states).float()
+        linear_dtype = self.combine_fts.weight.dtype
+        node_fts = self.node_states_encoder(node_states).to(linear_dtype)
+        edge_fts = self.edge_states_encoder(edge_states).to(linear_dtype)
 
         fts = self.combine_fts(
             torch.cat(
@@ -462,12 +465,10 @@ class DiscreteProcessor(torch.nn.Module):
         node_fts = node_fts.to(dtype)
         edge_fts = edge_fts.to(dtype)
 
-        node_fts = node_fts.float()
         node_fts = node_fts + self.node_ffn(node_fts)
         edge_fts_with_reversed = torch.cat(
             [edge_fts, edge_fts[batch.batched_reverse_idx]], dim=1
         )
 
-        edge_fts = edge_fts.float()
         edge_fts = edge_fts + self.edge_ffn(edge_fts_with_reversed)
-        return node_fts.float(), edge_fts.float()
+        return node_fts, edge_fts
