@@ -106,14 +106,14 @@ class _BiMambaBlock(torch.nn.Module):
     def forward(self, x):
         if x.numel() == 0:
             return x
-        dtype = self.out.weight.dtype
-        self.to(dtype)
-        x = x.to(dtype)
+        orig_dtype = x.dtype
+        self.float()
+        x = x.float()
         yf = self._scan(x, self.norm_f, self.in_f, self.mamba_f, self.out_f)
         xb = torch.flip(x, dims=[0])
         yb = self._scan(xb, self.norm_b, self.in_b, self.mamba_b, self.out_b)
         yb = torch.flip(yb, dims=[0])
-        return x + self.out(yf + yb)
+        return (x + self.out(yf + yb)).to(orig_dtype)
 
 
 class MambaMessagePassing(torch.nn.Module):
