@@ -83,37 +83,37 @@ class SelectBest(torch.nn.Module):
         return self.emb(state_with_best.long())
 
 
-class _BiMambaBlock(torch.nn.Module):
-    def __init__(self, h, d_state=16, d_conv=4, expand=2):
+class _TinyMambaBlock(torch.nn.Module):
+    def __init__(self, h, d_state=4, d_conv=1, expand=1):
         super().__init__()
-        self.norm_f = torch.nn.LayerNorm(h)
-        self.norm_b = torch.nn.LayerNorm(h)
-        self.in_f = Linear(h, h, bias=False)
-        self.in_b = Linear(h, h, bias=False)
-        self.mamba_f = Mamba(d_model=h, d_state=d_state, d_conv=d_conv, expand=expand)
-        self.mamba_b = Mamba(d_model=h, d_state=d_state, d_conv=d_conv, expand=expand)
-        self.out_f = Linear(h, h, bias=False)
-        self.out_b = Linear(h, h, bias=False)
-        self.out = Linear(h, h, bias=False)
-
-    def _scan(self, x, norm, inp, mamba, out_proj):
-        z = norm(x)
-        h = F.silu(inp(z)).unsqueeze(0)
-        y = mamba(h).squeeze(0)
-        g = torch.sigmoid(out_proj(z))
-        return y * g
+        self.norm = torch.nn.LayerNorm(h)
+        self.mamba = Mamba(
+            d_model=h,
+            d_state=d_state,
+            d_conv=d_conv,
+            expand=expand,
+        ).to(torch.float32)
 
     def forward(self, x):
         if x.numel() == 0:
             return x
+
         orig_dtype = x.dtype
-        self.float()
         x = x.float()
-        yf = self._scan(x, self.norm_f, self.in_f, self.mamba_f, self.out_f)
-        xb = torch.flip(x, dims=[0])
-        yb = self._scan(xb, self.norm_b, self.in_b, self.mamba_b, self.out_b)
-        yb = torch.flip(yb, dims=[0])
-        return (x + self.out(yf + yb)).to(orig_dtype)
+        x = self.norm(x)
+
+        squeeze = False
+        if x.dim() == 2:
+            x = x.unsqueeze(0)
+            squeeze = True
+
+        y = self.mamba(x.to(torch.float32))
+
+        if squeeze:
+            x = x.squeeze(0)
+            y = y.squeeze(0)
+
+        return (x + y).to(orig_dtype)
 
 
 class MambaMessagePassing(torch.nn.Module):
@@ -131,17 +131,11 @@ class MambaMessagePassing(torch.nn.Module):
         self.node_scalar_proj = Linear(1, h, bias=False)
         self.edge_in = Linear(5 * h, h, bias=False)
 
-        self.node_mamba = _BiMambaBlock(
+        self.node_mamba = _TinyMambaBlock(
             h,
-            d_state=getattr(config, "mamba_d_state", 16),
-            d_conv=getattr(config, "mamba_d_conv", 4),
-            expand=getattr(config, "mamba_expand", 2),
-        )
-        self.edge_mamba = _BiMambaBlock(
-            h,
-            d_state=getattr(config, "mamba_d_state", 16),
-            d_conv=getattr(config, "mamba_d_conv", 4),
-            expand=getattr(config, "mamba_expand", 2),
+            d_state=getattr(config, "mamba_d_state", 4),
+            d_conv=getattr(config, "mamba_d_conv", 1),
+            expand=getattr(config, "mamba_expand", 1),
         )
 
     def _node_order(self, batch, num_nodes, device):
@@ -150,16 +144,12 @@ class MambaMessagePassing(torch.nn.Module):
         )
         return deg.to(device) * (num_nodes + 1) + torch.arange(num_nodes, device=device)
 
-    def _edge_order(self, batch, num_edges, num_nodes, device):
-        deg = torch.bincount(batch.edge_index[0], minlength=num_nodes) + torch.bincount(
-            batch.edge_index[1], minlength=num_nodes
-        )
-        sender_deg = deg[batch.edge_index[0]].to(device)
-        return sender_deg * (num_edges + 1) + batch.edge_index[0].to(device)
+    def select_best_from_virtual(self, node_states, scalars, batch):
+        node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
+        return self.select_best_virtual(node_states, node_scalars, batch.batch)
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         dtype = self.node_scalar_proj.weight.dtype
-        self.to(dtype)
         scalars = _edge_scalar_column(scalars).to(dtype)
 
         node_tokens = self.select_best_from_virtual(node_states, scalars, batch).to(dtype)
@@ -173,9 +163,7 @@ class MambaMessagePassing(torch.nn.Module):
             )
 
         node_order = self._node_order(batch, node_tokens.size(0), node_tokens.device)
-        node_ctx = _apply_sequence_block(
-            node_tokens, node_ids, node_order, self.node_mamba
-        )
+        node_ctx = _apply_sequence_block(node_tokens, node_ids, node_order, self.node_mamba)
 
         edge_emb = self.edge_states_encoder(edge_states).to(dtype)
         sender = node_ctx[batch.edge_index[0]]
@@ -187,12 +175,7 @@ class MambaMessagePassing(torch.nn.Module):
             torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
         )
 
-        edge_order = self._edge_order(
-            batch, edge_tokens.size(0), node_tokens.size(0), edge_tokens.device
-        )
-        edge_ctx = _apply_sequence_block(
-            edge_tokens, batch.edge_index[1], edge_order, self.edge_mamba
-        )
+        edge_ctx = edge_tokens
 
         node_ctx = node_ctx + scatter(
             edge_ctx,
@@ -202,34 +185,6 @@ class MambaMessagePassing(torch.nn.Module):
             reduce="sum",
         )
         return node_ctx, edge_ctx
-
-    def compute_static_fts(self, scalars, batch):
-        scalars = _edge_scalar_column(scalars).float()
-        node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
-        sender_s = node_scalars[batch.edge_index[0]]
-        reciever_s = node_scalars[batch.edge_index[1]]
-
-        rlx = scalars < reciever_s
-        rlx_d = sender_s + scalars < reciever_s
-
-        fts = torch.cat([rlx, rlx_d], dim=-1).long()
-        return self.static_fts_encoder(fts)
-
-    def select_best_from_virtual(self, node_states, scalars, batch):
-        node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
-        return self.select_best_virtual(node_states, node_scalars, batch.batch)
-
-    def combined_edge_fts(self, node_states, edge_states, scalars, batch):
-        dtype = self.edge_in.weight.dtype
-        edge_fts = self.edge_states_encoder(edge_states).to(dtype)
-        sender_fts = self.node_states_encoder(node_states[batch.edge_index[0]]).to(dtype)
-        static_fts = self.compute_static_fts(scalars, batch).to(dtype)
-        return self.edge_in(
-            torch.cat(
-                [sender_fts, edge_fts, edge_fts[batch.batched_reverse_idx], static_fts],
-                dim=1,
-            )
-        )
 
 
 class ScalarUpdater(torch.nn.Module):
@@ -270,7 +225,6 @@ class ScalarUpdater(torch.nn.Module):
             return batch.scalars[:, processor_step], 0.0
 
         dtype = self.combine_fts.weight.dtype
-        self.to(dtype)
         node_fts = self.node_states_encoder(node_states).to(dtype)
         edge_fts = self.edge_states_encoder(edge_states).to(dtype)
 
@@ -364,7 +318,6 @@ class StatesBottleneck(torch.nn.Module):
         self, node_fts, edge_fts, batch, training_step, processor_step, teacher_force
     ):
         dtype = self.node_projections[0].weight.dtype
-        self.to(dtype)
         node_fts = node_fts.to(dtype)
         edge_fts = edge_fts.to(dtype)
 
