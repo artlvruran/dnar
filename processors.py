@@ -92,7 +92,7 @@ class _TinyMambaBlock(torch.nn.Module):
             d_state=d_state,
             d_conv=d_conv,
             expand=expand,
-        ).to(torch.float32)
+        )
 
     def forward(self, x):
         if x.numel() == 0:
@@ -100,17 +100,24 @@ class _TinyMambaBlock(torch.nn.Module):
 
         orig_dtype = x.dtype
         x = x.float()
-        x = self.norm(x)
+
+        z = F.layer_norm(
+            x,
+            (x.size(-1),),
+            self.norm.weight.float(),
+            self.norm.bias.float(),
+            self.norm.eps,
+        )
 
         squeeze = False
-        if x.dim() == 2:
-            x = x.unsqueeze(0)
+        if z.dim() == 2:
+            z = z.unsqueeze(0)
             squeeze = True
 
-        y = self.mamba(x.to(torch.float32))
+        self.mamba = self.mamba.float()
+        y = self.mamba(z.to(torch.float32))
 
         if squeeze:
-            x = x.squeeze(0)
             y = y.squeeze(0)
 
         return (x + y).to(orig_dtype)
