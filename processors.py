@@ -97,21 +97,27 @@ class _BiMambaBlock(torch.nn.Module):
         self.out = Linear(h, h, bias=False)
 
     def _scan(self, x, norm, inp, mamba, out_proj):
-        x = x.to(next(mamba.parameters()).dtype)
-        h = F.silu(inp(norm(x))).unsqueeze(0)
+        x = x.float()
+        norm = norm.float()
+        inp = inp.float()
+        out_proj = out_proj.float()
+        mamba = mamba.float()
+
+        z = norm(x)
+        h = F.silu(inp(z)).unsqueeze(0)
         y = mamba(h).squeeze(0)
-        g = torch.sigmoid(out_proj(norm(x)))
-        return y * g
+        g = torch.sigmoid(out_proj(z))
+        return (y * g).float()
 
     def forward(self, x):
         if x.numel() == 0:
-            return x
-        x = x.to(next(self.out.parameters()).dtype)
+            return x.float()
+        x = x.float()
         yf = self._scan(x, self.norm_f, self.in_f, self.mamba_f, self.out_f)
         xb = torch.flip(x, dims=[0])
         yb = self._scan(xb, self.norm_b, self.in_b, self.mamba_b, self.out_b)
         yb = torch.flip(yb, dims=[0])
-        return x + self.out(yf + yb)
+        return (x + self.out(yf + yb)).float()
 
 
 class MambaMessagePassing(torch.nn.Module):
@@ -158,10 +164,8 @@ class MambaMessagePassing(torch.nn.Module):
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         scalars = _edge_scalar_column(scalars).float()
 
-        node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
-        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(
-            node_tokens.dtype
-        )
+        node_tokens = self.select_best_from_virtual(node_states, scalars, batch).float()
+        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].float()
         node_tokens = node_tokens + self.node_scalar_proj(node_self_scalars)
 
         node_ids = getattr(batch, "batch", None)
@@ -175,11 +179,11 @@ class MambaMessagePassing(torch.nn.Module):
             node_tokens, node_ids, node_order, self.node_mamba
         )
 
-        edge_emb = self.edge_states_encoder(edge_states)
+        edge_emb = self.edge_states_encoder(edge_states).float()
         sender = node_ctx[batch.edge_index[0]]
         receiver = node_ctx[batch.edge_index[1]]
         rev_edge = edge_emb[batch.batched_reverse_idx]
-        static_fts = self.compute_static_fts(scalars, batch)
+        static_fts = self.compute_static_fts(scalars, batch).float()
 
         edge_tokens = self.edge_in(
             torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
@@ -199,7 +203,6 @@ class MambaMessagePassing(torch.nn.Module):
             dim_size=node_ctx.size(0),
             reduce="sum",
         )
-
         return node_ctx, edge_ctx
 
     def compute_static_fts(self, scalars, batch):
@@ -212,7 +215,7 @@ class MambaMessagePassing(torch.nn.Module):
         rlx_d = sender_s + scalars < reciever_s
 
         fts = torch.cat([rlx, rlx_d], dim=-1).long()
-        return self.static_fts_encoder(fts)
+        return self.static_fts_encoder(fts).float()
 
     def select_best_from_virtual(self, node_states, scalars, batch):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
@@ -221,7 +224,7 @@ class MambaMessagePassing(torch.nn.Module):
     def combined_edge_fts(self, node_states, edge_states, scalars, batch):
         edge_fts = self.edge_states_encoder(edge_states)
         sender_fts = self.node_states_encoder(node_states[batch.edge_index[0]])
-        static_fts = self.compute_static_fts(scalars, batch)
+        static_fts = self.compute_static_fts(scalars, batch).float()
         return self.edge_in(
             torch.cat(
                 [sender_fts, edge_fts, edge_fts[batch.batched_reverse_idx], static_fts],
@@ -267,8 +270,8 @@ class ScalarUpdater(torch.nn.Module):
         if self.scalars_only_as_input:
             return batch.scalars[:, processor_step], 0.0
 
-        node_fts = self.node_states_encoder(node_states)
-        edge_fts = self.edge_states_encoder(edge_states)
+        node_fts = self.node_states_encoder(node_states).float()
+        edge_fts = self.edge_states_encoder(edge_states).float()
 
         fts = self.combine_fts(
             torch.cat(
@@ -376,9 +379,8 @@ class StatesBottleneck(torch.nn.Module):
 
             for idx, projection in enumerate(projections):
                 logits = projection(fts).squeeze()
-                gt = hints[:, idx].double()
+                gt = hints[:, idx].float()
 
-                # loss
                 if training_step != -1:
                     if self.spec[group][idx] != MASK:
                         index = batch.batch if group == 0 else batch.edge_index[0]
@@ -393,7 +395,6 @@ class StatesBottleneck(torch.nn.Module):
 
                     loss += ce_loss
 
-                # postprocess
                 if not teacher_force:
                     if self.spec[group][idx] != MASK:
                         index = batch.batch if group == 0 else batch.edge_index[0]
@@ -403,9 +404,9 @@ class StatesBottleneck(torch.nn.Module):
                             logits, index=index, tau=0.0, use_noise=False
                         )
                     else:
-                        pred = 1.0 * (logits > 0.0)
+                        pred = (logits > 0.0).float()
                 else:
-                    pred = gt
+                    pred = gt.float()
                 stacked_fts.append(torch.unsqueeze(pred, -1))
             states.append(torch.cat(stacked_fts, -1))
 
@@ -461,9 +462,12 @@ class DiscreteProcessor(torch.nn.Module):
         node_fts = node_fts.to(dtype)
         edge_fts = edge_fts.to(dtype)
 
+        node_fts = node_fts.float()
         node_fts = node_fts + self.node_ffn(node_fts)
         edge_fts_with_reversed = torch.cat(
             [edge_fts, edge_fts[batch.batched_reverse_idx]], dim=1
         )
+
+        edge_fts = edge_fts.float()
         edge_fts = edge_fts + self.edge_ffn(edge_fts_with_reversed)
-        return node_fts, edge_fts
+        return node_fts.float(), edge_fts.float()
