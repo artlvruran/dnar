@@ -1,13 +1,16 @@
+import math
+
 import torch
+import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch_geometric.utils import scatter
-from torch import nn
 
 from configs import base_config
 from generate_data import EDGE_MASK_ONE, MASK, NODE_MASK_ONE, NODE_POINTER, SPEC
 from utils import from_binary_states, gumbel_softmax, node_pointer_loss, temp_by_step
 from mamba_ssm import Mamba
+
 
 def _edge_scalar_column(scalars):
     if not torch.is_tensor(scalars):
@@ -17,6 +20,36 @@ def _edge_scalar_column(scalars):
     if scalars.dim() == 2 and scalars.size(-1) == 1:
         return scalars
     return scalars.reshape(scalars.shape[0], -1)[:, :1]
+
+
+def _sequence_order_key(group_ids, secondary):
+    group_ids = group_ids.long()
+    secondary = secondary.long()
+    scale = int(secondary.max().item()) + 1 if secondary.numel() else 1
+    return group_ids * scale + secondary
+
+
+def _apply_sequence_block(x, group_ids, secondary, block):
+    if x.numel() == 0:
+        return x
+
+    order = torch.argsort(_sequence_order_key(group_ids, secondary), stable=True)
+    x_sorted = x[order]
+    groups_sorted = group_ids[order]
+    counts = torch.bincount(groups_sorted, minlength=int(groups_sorted.max().item()) + 1)
+
+    out = []
+    start = 0
+    for length in counts.tolist():
+        seq = x_sorted[start : start + length]
+        out.append(block(seq))
+        start += length
+
+    y_sorted = torch.cat(out, dim=0)
+    inv = torch.empty_like(order)
+    inv[order] = torch.arange(order.numel(), device=x.device)
+    return y_sorted[inv]
+
 
 class StatesEncoder(torch.nn.Module):
     def __init__(self, h, num_binary_states):
@@ -50,67 +83,38 @@ class SelectBest(torch.nn.Module):
         return self.emb(state_with_best.long())
 
 
-def _pack_by_group(x, group_ids, secondary=None):
-    if secondary is None:
-        secondary = torch.arange(x.size(0), device=x.device)
-
-    group_ids = group_ids.long()
-    secondary = secondary.long()
-
-    if x.numel() == 0:
-        return (
-            x.new_zeros((0, 0, x.size(-1))),
-            torch.zeros((0, 0), dtype=torch.bool, device=x.device),
-            torch.empty(0, dtype=torch.long, device=x.device),
-        )
-
-    max_secondary = int(secondary.max().item()) + 1
-    order = torch.argsort(group_ids * max_secondary + secondary, stable=True)
-
-    x_sorted = x[order]
-    group_sorted = group_ids[order]
-    num_groups = int(group_sorted.max().item()) + 1
-    lengths = torch.bincount(group_sorted, minlength=num_groups)
-    max_len = int(lengths.max().item())
-
-    dense = x.new_zeros((num_groups, max_len, x.size(-1)))
-    mask = torch.zeros((num_groups, max_len), dtype=torch.bool, device=x.device)
-
-    start = 0
-    for g, l in enumerate(lengths.tolist()):
-        if l:
-            dense[g, :l] = x_sorted[start : start + l]
-            mask[g, :l] = True
-            start += l
-
-    inv = torch.empty_like(order)
-    inv[order] = torch.arange(order.numel(), device=x.device)
-    return dense, mask, inv
-
-
-def _unpack_by_group(dense, mask, inv):
-    return dense[mask][inv]
-
-
-class _MambaBlock(nn.Module):
+class _BiMambaBlock(torch.nn.Module):
     def __init__(self, h, d_state=16, d_conv=4, expand=2):
         super().__init__()
-        self.norm = nn.LayerNorm(h)
-        self.mamba = Mamba(
-            d_model=h,
-            d_state=d_state,
-            d_conv=d_conv,
-            expand=expand,
-        )
+        self.norm_f = torch.nn.LayerNorm(h)
+        self.norm_b = torch.nn.LayerNorm(h)
+        self.in_f = Linear(h, h, bias=False)
+        self.in_b = Linear(h, h, bias=False)
+        self.mamba_f = Mamba(d_model=h, d_state=d_state, d_conv=d_conv, expand=expand)
+        self.mamba_b = Mamba(d_model=h, d_state=d_state, d_conv=d_conv, expand=expand)
+        self.out_f = Linear(h, h, bias=False)
+        self.out_b = Linear(h, h, bias=False)
+        self.out = Linear(h, h, bias=False)
+
+    def _scan(self, x, norm, inp, mamba, out_proj):
+        x = x.to(next(mamba.parameters()).dtype)
+        h = F.silu(inp(norm(x))).unsqueeze(0)
+        y = mamba(h).squeeze(0)
+        g = torch.sigmoid(out_proj(norm(x)))
+        return y * g
 
     def forward(self, x):
-        x = x.float()
-        self.norm = self.norm.float()
-        self.mamba = self.mamba.float()
-        return x + self.mamba(self.norm(x))
+        if x.numel() == 0:
+            return x
+        x = x.to(next(self.out.parameters()).dtype)
+        yf = self._scan(x, self.norm_f, self.in_f, self.mamba_f, self.out_f)
+        xb = torch.flip(x, dims=[0])
+        yb = self._scan(xb, self.norm_b, self.in_b, self.mamba_b, self.out_b)
+        yb = torch.flip(yb, dims=[0])
+        return x + self.out(yf + yb)
 
 
-class MambaMessagePassing(nn.Module):
+class MambaMessagePassing(torch.nn.Module):
     def __init__(self, config: base_config.Config):
         super().__init__()
         h = config.h
@@ -125,24 +129,39 @@ class MambaMessagePassing(nn.Module):
         self.node_scalar_proj = Linear(1, h, bias=False)
         self.edge_in = Linear(5 * h, h, bias=False)
 
-        self.node_mamba = _MambaBlock(
+        self.node_mamba = _BiMambaBlock(
             h,
             d_state=getattr(config, "mamba_d_state", 16),
             d_conv=getattr(config, "mamba_d_conv", 4),
             expand=getattr(config, "mamba_expand", 2),
         )
-        self.edge_mamba = _MambaBlock(
+        self.edge_mamba = _BiMambaBlock(
             h,
             d_state=getattr(config, "mamba_d_state", 16),
             d_conv=getattr(config, "mamba_d_conv", 4),
             expand=getattr(config, "mamba_expand", 2),
         )
+
+    def _node_order(self, batch, num_nodes, device):
+        deg = torch.bincount(batch.edge_index[0], minlength=num_nodes) + torch.bincount(
+            batch.edge_index[1], minlength=num_nodes
+        )
+        return deg.to(device) * (num_nodes + 1) + torch.arange(num_nodes, device=device)
+
+    def _edge_order(self, batch, num_edges, num_nodes, device):
+        deg = torch.bincount(batch.edge_index[0], minlength=num_nodes) + torch.bincount(
+            batch.edge_index[1], minlength=num_nodes
+        )
+        sender_deg = deg[batch.edge_index[0]].to(device)
+        return sender_deg * (num_edges + 1) + batch.edge_index[0].to(device)
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         scalars = _edge_scalar_column(scalars).float()
 
         node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
-        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(node_tokens.dtype)
+        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(
+            node_tokens.dtype
+        )
         node_tokens = node_tokens + self.node_scalar_proj(node_self_scalars)
 
         node_ids = getattr(batch, "batch", None)
@@ -151,14 +170,10 @@ class MambaMessagePassing(nn.Module):
                 node_tokens.size(0), dtype=torch.long, device=node_tokens.device
             )
 
-        node_dense, node_mask, node_inv = _pack_by_group(
-            node_tokens,
-            node_ids,
-            secondary=torch.arange(node_tokens.size(0), device=node_tokens.device),
+        node_order = self._node_order(batch, node_tokens.size(0), node_tokens.device)
+        node_ctx = _apply_sequence_block(
+            node_tokens, node_ids, node_order, self.node_mamba
         )
-        node_dense = node_dense.float()
-        node_dense = self.node_mamba(node_dense)
-        node_ctx = _unpack_by_group(node_dense, node_mask, node_inv)
 
         edge_emb = self.edge_states_encoder(edge_states)
         sender = node_ctx[batch.edge_index[0]]
@@ -170,14 +185,12 @@ class MambaMessagePassing(nn.Module):
             torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
         )
 
-        edge_dense, edge_mask, edge_inv = _pack_by_group(
-            edge_tokens,
-            batch.edge_index[1],
-            secondary=batch.edge_index[0],
+        edge_order = self._edge_order(
+            batch, edge_tokens.size(0), node_tokens.size(0), edge_tokens.device
         )
-        edge_dense = edge_dense.float()
-        edge_dense = self.edge_mamba(edge_dense)
-        edge_ctx = _unpack_by_group(edge_dense, edge_mask, edge_inv)
+        edge_ctx = _apply_sequence_block(
+            edge_tokens, batch.edge_index[1], edge_order, self.edge_mamba
+        )
 
         node_ctx = node_ctx + scatter(
             edge_ctx,
@@ -193,10 +206,10 @@ class MambaMessagePassing(nn.Module):
         scalars = _edge_scalar_column(scalars).float()
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
         sender_s = node_scalars[batch.edge_index[0]]
-        receiver_s = node_scalars[batch.edge_index[1]]
+        reciever_s = node_scalars[batch.edge_index[1]]
 
-        rlx = scalars < receiver_s
-        rlx_d = sender_s + scalars < receiver_s
+        rlx = scalars < reciever_s
+        rlx_d = sender_s + scalars < reciever_s
 
         fts = torch.cat([rlx, rlx_d], dim=-1).long()
         return self.static_fts_encoder(fts)
