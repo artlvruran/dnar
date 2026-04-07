@@ -155,6 +155,18 @@ class MambaMessagePassing(torch.nn.Module):
         node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
         return self.select_best_virtual(node_states, node_scalars, batch.batch)
 
+    def compute_static_fts(self, scalars, batch):
+        scalars = _edge_scalar_column(scalars).float()
+        node_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]]
+        sender_s = node_scalars[batch.edge_index[0]]
+        reciever_s = node_scalars[batch.edge_index[1]]
+
+        rlx = scalars < reciever_s
+        rlx_d = sender_s + scalars < reciever_s
+
+        fts = torch.cat([rlx, rlx_d], dim=-1).long()
+        return self.static_fts_encoder(fts)
+
     def forward(self, node_states, edge_states, scalars, batch, training_step):
         dtype = self.node_scalar_proj.weight.dtype
         scalars = _edge_scalar_column(scalars).to(dtype)
