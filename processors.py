@@ -441,8 +441,6 @@ class DiscreteProcessor(torch.nn.Module):
 
         loss = scalars_loss + states_loss
 
-        self.float()
-
         return node_states, edge_states, out_scalars, loss
 
     def ffn(self, node_fts, edge_fts, batch):
