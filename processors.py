@@ -168,42 +168,36 @@ class MambaMessagePassing(torch.nn.Module):
         return self.static_fts_encoder(fts)
 
     def forward(self, node_states, edge_states, scalars, batch, training_step):
-        dtype = self.node_scalar_proj.weight.dtype
-        scalars = _edge_scalar_column(scalars).to(dtype)
+        scalars = _edge_scalar_column(scalars).float()
 
-        node_tokens = self.select_best_from_virtual(node_states, scalars, batch).to(dtype)
-        node_self_scalars = scalars[batch.edge_index[0] == batch.edge_index[1]].to(dtype)
-        node_tokens = node_tokens + self.node_scalar_proj(node_self_scalars)
-
-        node_ids = getattr(batch, "batch", None)
-        if node_ids is None:
-            node_ids = torch.zeros(
-                node_tokens.size(0), dtype=torch.long, device=node_tokens.device
-            )
-
+        node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
         node_order = self._node_order(batch, node_tokens.size(0), node_tokens.device)
-        node_ctx = _apply_sequence_block(node_tokens, node_ids, node_order, self.node_mamba)
+        node_ctx = _apply_sequence_block(node_tokens, batch.batch, node_order, self.node_mamba)
 
-        edge_emb = self.edge_states_encoder(edge_states).to(dtype)
-        sender = node_ctx[batch.edge_index[0]]
-        receiver = node_ctx[batch.edge_index[1]]
-        rev_edge = edge_emb[batch.batched_reverse_idx]
-        static_fts = self.compute_static_fts(scalars, batch).to(dtype)
+        edge_emb = self.edge_states_encoder(edge_states)
+        static_fts = self.compute_static_fts(scalars, batch)
 
         edge_tokens = self.edge_in(
-            torch.cat([sender, receiver, edge_emb, rev_edge, static_fts], dim=-1)
+            torch.cat(
+                [
+                    node_ctx[batch.edge_index[0]],
+                    node_ctx[batch.edge_index[1]],
+                    edge_emb,
+                    edge_emb[batch.batched_reverse_idx],
+                    static_fts,
+                ],
+                dim=-1,
+            )
         )
 
-        edge_ctx = edge_tokens
-
         node_ctx = node_ctx + scatter(
-            edge_ctx,
+            edge_tokens,
             index=batch.edge_index[1],
             dim=0,
             dim_size=node_ctx.size(0),
             reduce="sum",
         )
-        return node_ctx, edge_ctx
+        return node_ctx, edge_tokens
 
 
 class ScalarUpdater(torch.nn.Module):
