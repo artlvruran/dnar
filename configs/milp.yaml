@@ -1,7 +1,7 @@
 algorithm: milp
 
 num_samples:
-  train: 10000
+  train: 512
   val: 512
   test: 512
 
