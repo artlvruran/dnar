@@ -43,3 +43,22 @@ class Dnar(Module):
         if writer is not None:
             writer.add_scalar("Loss/train", loss.detach().item(), training_step)
         return output, loss
+
+
+import torch
+import torch.nn as nn
+from torch_geometric.nn import global_mean_pool
+
+class HeuristicHead(nn.Module):
+    def __init__(self, in_dim: int, num_heuristics: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, in_dim),
+            nn.ReLU(),
+            nn.Linear(in_dim, num_heuristics),
+        )
+
+    def forward(self, x, batch):
+        from torch_geometric.nn import global_mean_pool
+        g = global_mean_pool(x, batch)
+        return self.net(g)

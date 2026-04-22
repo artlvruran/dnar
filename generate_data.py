@@ -9,6 +9,7 @@ from torch_geometric.loader import DataLoader
 
 from configs import base_config
 
+from milp_task import bnb_trace, random_feasible_milp, instance_edge_attr
 
 class ProblemInstance:
     def __init__(self, adj, start, weighted, randomness):
@@ -32,6 +33,42 @@ def push_states(
     edge_states.append(np.stack(cur_step_edges, axis=-1))
     scalars.append(np.stack(cur_step_scalars, axis=-1))
 
+def milp(instance, max_steps=None):
+    states, heuristic_y, branch_y = bnb_trace(instance, max_steps=max_steps)
+
+    node_fts_list = []
+    edge_fts_list = []
+    scalars_list = []
+
+    for node_fts, edge_fts, scalars in states:
+        node_fts_list.append(node_fts)
+        edge_fts_list.append(edge_fts)
+        scalars_list.append(scalars)
+
+    if len(node_fts_list) == 0:
+        raise RuntimeError("MILP trace is empty")
+
+    if max_steps is None:
+        max_steps = len(node_fts_list)
+
+    last_node = node_fts_list[-1]
+    last_edge = edge_fts_list[-1]
+    last_scalar = scalars_list[-1]
+
+    while len(node_fts_list) < max_steps:
+        node_fts_list.append(last_node.copy())
+        edge_fts_list.append(last_edge.copy())
+        scalars_list.append(last_scalar.copy())
+
+    node_fts_list = node_fts_list[:max_steps]
+    edge_fts_list = edge_fts_list[:max_steps]
+    scalars_list = scalars_list[:max_steps]
+
+    return (
+        np.stack(node_fts_list),
+        np.stack(edge_fts_list),
+        np.stack(scalars_list),
+    )
 
 def bfs(instance: ProblemInstance):
     n = instance.adj.shape[0]
@@ -437,9 +474,9 @@ SPEC["dfs"] = (
 SPEC["mst"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["dijkstra"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["mis"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))  # MASK
+SPEC["milp"] = ((MASK, NODE_POINTER, MASK, MASK, MASK, MASK, MASK, MASK), (MASK,))
 
-ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis}
-
+ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis, 'milp': milp}
 
 def create_dataloader(config: base_config.Config, split: str, seed: int, device):
     np.random.seed(seed)
@@ -450,10 +487,33 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
     for _ in tqdm.tqdm(
         range(config.num_samples[split]), f"Generate samples for {split}"
     ):
-        instance = sampler(config.problem_size[split])
-        node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
+        if config.algorithm == "milp":
+            instance = random_feasible_milp(
+                n_vars=config.problem_size[split],
+                n_cons=config.milp_num_constraints,
+                int_ratio=config.milp_int_ratio,
+                seed=np.random.randint(0, 1_000_000),
+            )
 
-        edge_index = torch.tensor(instance.edge_index).contiguous()
+            node_fts, edge_fts, _ = ALGORITHMS["milp"](
+                instance,
+                max_steps=config.milp_max_steps,
+            )
+
+            edge_index, edge_attr = instance_edge_attr(instance)
+
+            node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
+            edge_fts = torch.transpose(
+                torch.tensor(edge_fts)[:, edge_index[0], edge_index[1]],
+                0,
+                1,
+            )
+
+            scalars = torch.tensor(edge_attr)
+        else:
+            instance = sampler(config.problem_size[split])
+            node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
+            edge_index = torch.tensor(instance.edge_index).contiguous()
 
         node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
         edge_fts = torch.transpose(

@@ -1,0 +1,67 @@
+{
+  "name": "dijkstra",
+  "overall train time": 10781.1935,
+  "avg train time per iter": 10.770423,
+  "inference": [
+    {
+      "num nodes": 10,
+      "time": 6.3754,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 20,
+      "time": 14.3821,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 30,
+      "time": 22.3922,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 40,
+      "time": 30.6733,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 50,
+      "time": 39.9818,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 60,
+      "time": 51.0619,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 70,
+      "time": 65.7329,
+      "pointer_accuracy": 0.9991071428571429,
+      "pointer_accuracy_graph_level": 0.996875
+    },
+    {
+      "num nodes": 80,
+      "time": 80.2083,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    },
+    {
+      "num nodes": 90,
+      "time": 96.1943,
+      "pointer_accuracy": 0.9996875,
+      "pointer_accuracy_graph_level": 0.99375
+    },
+    {
+      "num nodes": 100,
+      "time": 114.2081,
+      "pointer_accuracy": 1.0,
+      "pointer_accuracy_graph_level": 1.0
+    }
+  ]
+}

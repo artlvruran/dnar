@@ -38,6 +38,11 @@ class Config:
     models_directory: str = 'models'
     tensorboard_logs: bool = True
 
+    # --- milp ---
+    milp_num_constraints: int = 8
+    milp_int_ratio: float = 0.6
+    milp_max_steps: int = 128
+
 
 def read_config(config_path: str):
     with open(config_path, 'r') as f:
