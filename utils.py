@@ -15,12 +15,13 @@ def reverse_edge_index(edge_index):
 
 def temp_by_step(step, high, low, num_steps, temp_on_eval):
     if step == -1:
-        return temp_on_eval
+        return float(temp_on_eval)
     assert step >= 0 and low <= high
-    return np.geomspace(high, low, max(num_steps, step + 1))[step]
+    return float(np.geomspace(high, low, max(num_steps, step + 1))[step])
 
 
 def gumbel_softmax(logits, index, tau=1.0, use_noise=False):
+    tau = float(tau)
     if use_noise:
         noise = (
             -torch.empty_like(logits, memory_format=torch.legacy_contiguous_format)
