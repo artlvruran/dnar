@@ -1,5 +1,6 @@
 import argparse
 import time
+import warnings
 
 import numpy as np
 import torch
@@ -28,8 +29,27 @@ def evaluate(model, val_data, test_data, metrics_list, model_saver, writer, step
 
 
 def train(config: base_config.Config, seed):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = models.Dnar(config).to(device)
+    prefer_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if prefer_cuda else "cpu")
+    model = models.Dnar(config)
+    if prefer_cuda:
+        try:
+            model = model.to(device)
+        except Exception as exc:
+            # In notebook workflows, a prior CUDA device-side assert can poison the
+            # CUDA context and make even `.to("cuda")` fail on subsequent runs.
+            # Fallback to CPU so the experiment can continue without restarting.
+            if "CUDA error: device-side assert triggered" in str(exc):
+                warnings.warn(
+                    "CUDA context is in an error state (device-side assert). "
+                    "Falling back to CPU for this run."
+                )
+                device = torch.device("cpu")
+                model = model.to(device)
+            else:
+                raise
+    else:
+        model = model.to(device)
 
     opt = torch.optim.AdamW(
         model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
