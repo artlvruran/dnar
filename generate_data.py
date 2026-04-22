@@ -476,7 +476,63 @@ SPEC["dijkstra"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["mis"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))  # MASK
 SPEC["milp"] = ((MASK, NODE_POINTER, MASK, MASK, MASK, MASK, MASK, MASK), (MASK,))
 
-ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis, 'milp': milp}
+ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis, "milp": milp}
+
+
+def _normalize_edge_features(edge_fts, edge_index: torch.Tensor) -> torch.Tensor:
+    edge_fts = torch.as_tensor(edge_fts)
+    num_nodes = int(edge_index.max().item()) + 1
+    num_edges = edge_index.shape[1]
+
+    # Normalize edge feature layout to [T, E, K].
+    if edge_fts.ndim == 4:
+        # Dense layouts: [T, N, N, K] or [T, K, N, N].
+        if edge_fts.shape[1] == num_nodes and edge_fts.shape[2] == num_nodes:
+            edge_fts = edge_fts[:, edge_index[0], edge_index[1]]
+        elif edge_fts.shape[2] == num_nodes and edge_fts.shape[3] == num_nodes:
+            edge_fts = edge_fts.permute(0, 2, 3, 1)[:, edge_index[0], edge_index[1]]
+        else:
+            raise ValueError(
+                f"Unexpected dense edge_fts shape {tuple(edge_fts.shape)} for num_nodes={num_nodes}"
+            )
+    elif edge_fts.ndim == 3:
+        # Sparse layouts: [T, E, K] or [T, K, E].
+        if edge_fts.shape[1] == num_edges:
+            pass
+        elif edge_fts.shape[2] == num_edges:
+            edge_fts = edge_fts.permute(0, 2, 1)
+        else:
+            raise ValueError(
+                f"Unexpected sparse edge_fts shape {tuple(edge_fts.shape)} for num_edges={num_edges}"
+            )
+    else:
+        raise ValueError(f"Unexpected edge_fts ndim={edge_fts.ndim}")
+
+    return edge_fts
+
+
+def _normalize_scalars(scalars, edge_index: torch.Tensor) -> torch.Tensor:
+    scalars = torch.as_tensor(scalars)
+    num_nodes = int(edge_index.max().item()) + 1
+    num_edges = edge_index.shape[1]
+
+    # Normalize scalar layout to [T, E, S].
+    if scalars.ndim == 3 and scalars.shape[1] == num_nodes and scalars.shape[2] == num_nodes:
+        # Dense per-node-pair scalars [T, N, N].
+        scalars = scalars[:, edge_index[0], edge_index[1]].unsqueeze(-1)
+    elif scalars.ndim == 3 and scalars.shape[1] == num_edges:
+        # Already [T, E, S].
+        pass
+    elif scalars.ndim == 2 and scalars.shape[1] == num_edges:
+        # [T, E] -> [T, E, 1].
+        scalars = scalars.unsqueeze(-1)
+    else:
+        raise ValueError(
+            f"Unexpected scalars shape {tuple(scalars.shape)} for num_nodes={num_nodes}, num_edges={num_edges}"
+        )
+
+    return scalars
+
 
 def create_dataloader(config: base_config.Config, split: str, seed: int, device):
     np.random.seed(seed)
@@ -499,7 +555,6 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
                 instance,
                 max_steps=config.milp_max_steps,
             )
-
             edge_index = torch.tensor(instance.edge_index).contiguous()
         else:
             instance = sampler(config.problem_size[split])
@@ -508,21 +563,8 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
 
         node_fts = torch.transpose(torch.as_tensor(node_fts), 0, 1)
 
-        edge_fts = torch.as_tensor(edge_fts)
-        num_nodes = int(edge_index.max().item()) + 1
-
-        if edge_fts.ndim == 4 and (
-                edge_fts.shape[1] != num_nodes or edge_fts.shape[2] != num_nodes
-        ):
-            if edge_fts.shape[2] == num_nodes and edge_fts.shape[3] == num_nodes:
-                edge_fts = edge_fts.permute(0, 2, 3, 1)
-            else:
-                raise ValueError(
-                    f"Unexpected edge_fts shape {tuple(edge_fts.shape)} for num_nodes={num_nodes}"
-                )
-        edge_fts = torch.transpose(edge_fts[:, edge_index[0], edge_index[1]], 0, 1)
-
-        scalars = torch.transpose(torch.as_tensor(scalars), 0, 1)
+        edge_fts = torch.transpose(_normalize_edge_features(edge_fts, edge_index), 0, 1)
+        scalars = torch.transpose(_normalize_scalars(scalars, edge_index), 0, 1)
 
         output_fts = edge_fts if config.output_type == "pointer" else node_fts
         y = output_fts[:, -1, config.output_idx].clone().detach()
