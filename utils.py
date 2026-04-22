@@ -73,10 +73,12 @@ def node_mask_accuracy_graph_level(graph, prediction):
     return 1.0 * (node_mask_accuracy(graph, prediction) == 1.0)
 
 
-def evaluate(model, dataloader, calculators):
+def evaluate(model, dataloader, calculators, device=None):
     scores = defaultdict(float)
     total_points = 0
     for data in dataloader:
+        if device is not None:
+            data = data.to(device)
         batched_prediction, _ = model(data)
         for batch_idx, graph in enumerate(data.to_data_list()):
             batch_pred_idx = (

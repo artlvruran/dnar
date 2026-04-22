@@ -13,10 +13,11 @@ from generate_data import create_dataloader
 
 
 def evaluate(model, val_data, test_data, metrics_list, model_saver, writer, steps):
+    device = next(model.parameters()).device
     with torch.no_grad():
         model.eval()
-        val_scores = utils.evaluate(model, val_data, metrics_list)
-        test_scores = utils.evaluate(model, test_data, metrics_list)
+        val_scores = utils.evaluate(model, val_data, metrics_list, device=device)
+        test_scores = utils.evaluate(model, test_data, metrics_list, device=device)
         print("Eval after {} steps:".format(steps))
         print("Val scores: ", val_scores)
         print("Test scores: ", test_scores)
@@ -74,6 +75,7 @@ def train(config: base_config.Config, seed):
         for batch in train_data:
             steps += 1
             iteration_start_time = time.perf_counter()
+            batch = batch.to(device)
 
             _, loss = model(batch, writer, training_step=steps)
             assert not torch.isnan(loss)

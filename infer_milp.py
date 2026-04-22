@@ -5,6 +5,8 @@ from configs import base_config
 from generate_data import create_dataloader
 from models import Dnar
 
+from milp_task import make_graph_state, solve_lp_relaxation
+
 
 def load_model(config, checkpoint_path, device):
     model = Dnar(config).to(device)
@@ -27,6 +29,24 @@ def infer_one(model, graph):
     var_nodes = torch.where(variable_mask)[0]
     chosen = var_nodes[torch.argmax(scores)].item()
     return chosen
+
+@torch.no_grad()
+def infer_from_oracle_lp(model, inst, fixed, device):
+    """
+    LP-solver oracle is provided externally at inference time.
+    Returns oracle-produced LP state. Conversion to model graph layout is task-specific.
+    """
+    lp = solve_lp_relaxation(inst, fixed)
+    if not lp.feasible or lp.x is None:
+        return None
+
+    node_fts, edge_fts, scalars = make_graph_state(inst, fixed, lp.x, lp.obj)
+    return {
+        "node_fts": torch.as_tensor(node_fts, dtype=torch.float, device=device),
+        "edge_fts_dense": torch.as_tensor(edge_fts, dtype=torch.float, device=device),
+        "scalars_dense": torch.as_tensor(scalars, dtype=torch.float, device=device),
+        "lp_obj": lp.obj,
+    }
 
 
 if __name__ == "__main__":

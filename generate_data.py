@@ -557,7 +557,7 @@ def _normalize_scalars(scalars, edge_index: torch.Tensor) -> tuple[torch.Tensor,
 
     return scalars, edge_index
 
-def create_dataloader(config: base_config.Config, split: str, seed: int, device):
+def create_dataloader(config: base_config.Config, split: str, seed: int, device=None):
     np.random.seed(seed)
 
     datapoints = []
@@ -602,7 +602,7 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
                 scalars=scalars,
                 edge_index=edge_index,
                 y=y,
-            ).to(device)
+            )
         )
     return DataLoader(datapoints, batch_size=config.batch_size, shuffle=True)
 

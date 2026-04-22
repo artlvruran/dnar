@@ -154,12 +154,12 @@ def bnb_trace(inst: MILPInstance, max_steps: int = 128, node_selection: str = "b
     branch_y = []
 
     while open_nodes and len(states) < max_steps:
-        evaluated = []
+        feasible_nodes = []
         for fixed in open_nodes:
             lp = solve_lp_relaxation(inst, fixed)
-            evaluated.append((fixed, lp))
+            if lp.feasible:
+                feasible_nodes.append((fixed, lp))
 
-        feasible_nodes = [(f, lp) for f, lp in evaluated if lp.feasible]
         if not feasible_nodes:
             break
 
@@ -180,7 +180,7 @@ def bnb_trace(inst: MILPInstance, max_steps: int = 128, node_selection: str = "b
         x = lp.x
         assert x is not None
 
-        hid, var, scores = oracle_pick_heuristic(inst, fixed, x)
+        hid, var, _ = oracle_pick_heuristic(inst, fixed, x)
 
         states.append(make_graph_state(inst, fixed, x, lp.obj))
         heuristic_y.append(hid)
@@ -189,15 +189,11 @@ def bnb_trace(inst: MILPInstance, max_steps: int = 128, node_selection: str = "b
         if var is None:
             continue
 
-        child0 = fixed.copy()
-        child0[var] = 0
-        child1 = fixed.copy()
-        child1[var] = 1
-
-        if solve_lp_relaxation(inst, child0).feasible:
-            open_nodes.append(child0)
-        if solve_lp_relaxation(inst, child1).feasible:
-            open_nodes.append(child1)
+        for value in (0, 1):
+            child = fixed.copy()
+            child[var] = value
+            if solve_lp_relaxation(inst, child).feasible:
+                open_nodes.append(child)
 
     return states, np.array(heuristic_y, dtype=np.int64), np.array(branch_y, dtype=np.int64)
 
