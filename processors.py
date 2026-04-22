@@ -249,7 +249,9 @@ class ScalarUpdater(torch.nn.Module):
 
         accumulated_node = edge_push_without_node + edge_push_with_node
         edge_push = torch.zeros_like(scalars)
-        edge_push[batch.edge_index[0] == batch.edge_index[1]] = accumulated_node
+        edge_push[batch.edge_index[0] == batch.edge_index[1]] = accumulated_node.to(
+            edge_push.dtype
+        )
         return edge_push
 
     def compute_keep(self, fts, scalars, index, training_step):
