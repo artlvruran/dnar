@@ -32,6 +32,7 @@ def evaluate(model, val_data, test_data, metrics_list, model_saver, writer, step
 def train(config: base_config.Config, seed):
     prefer_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if prefer_cuda else "cpu")
+    use_amp = prefer_cuda
     model = models.Dnar(config)
     if prefer_cuda:
         try:
@@ -55,6 +56,7 @@ def train(config: base_config.Config, seed):
     opt = torch.optim.AdamW(
         model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
     )
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     model_name = "{}_{}".format(config.algorithm, seed)
     model_saver = utils.ModelSaver(config.models_directory, model_name)
@@ -77,12 +79,42 @@ def train(config: base_config.Config, seed):
             iteration_start_time = time.perf_counter()
             batch = batch.to(device)
 
-            _, loss = model(batch, writer, training_step=steps)
+            try:
+                with torch.amp.autocast("cuda", enabled=use_amp):
+                    _, loss = model(batch, writer, training_step=steps)
+            except RuntimeError as exc:
+                if (
+                    device.type == "cuda"
+                    and (
+                        "CUBLAS_STATUS_ALLOC_FAILED" in str(exc)
+                        or "out of memory" in str(exc).lower()
+                    )
+                ):
+                    warnings.warn(
+                        "CUDA memory allocation failed during forward pass; "
+                        "falling back to CPU for this run."
+                    )
+                    torch.cuda.empty_cache()
+                    device = torch.device("cpu")
+                    model = model.to(device)
+                    batch = batch.to(device)
+                    use_amp = False
+                    scaler = torch.amp.GradScaler("cuda", enabled=False)
+                    _, loss = model(batch, writer, training_step=steps)
+                else:
+                    raise
             assert not torch.isnan(loss)
 
-            loss.backward()
+            if use_amp:
+                scaler.scale(loss).backward()
+            else:
+                loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            opt.step()
+            if use_amp:
+                scaler.step(opt)
+                scaler.update()
+            else:
+                opt.step()
             opt.zero_grad()
 
             total_training_time += time.perf_counter() - iteration_start_time

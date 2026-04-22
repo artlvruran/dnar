@@ -159,7 +159,6 @@ def bnb_trace(inst: MILPInstance, max_steps: int = 128, node_selection: str = "b
             lp = solve_lp_relaxation(inst, fixed)
             if lp.feasible:
                 feasible_nodes.append((fixed, lp))
-
         if not feasible_nodes:
             break
 

@@ -584,16 +584,18 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device=
             node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
             edge_index = torch.as_tensor(instance.edge_index, dtype=torch.long).contiguous()
 
-        node_fts = torch.transpose(torch.as_tensor(node_fts), 0, 1)
+        node_fts = torch.transpose(
+            torch.as_tensor(node_fts, dtype=torch.float32), 0, 1
+        )
 
         edge_fts, edge_index = _normalize_edge_features(edge_fts, edge_index)
         scalars, edge_index = _normalize_scalars(scalars, edge_index)
 
-        edge_fts = torch.transpose(edge_fts, 0, 1)
-        scalars = torch.transpose(scalars, 0, 1)
+        edge_fts = torch.transpose(edge_fts.to(torch.float32), 0, 1)
+        scalars = torch.transpose(scalars.to(torch.float32), 0, 1)
 
         output_fts = edge_fts if config.output_type == "pointer" else node_fts
-        y = output_fts[:, -1, config.output_idx].clone().detach()
+        y = output_fts[:, -1, config.output_idx].clone().detach().to(torch.float32)
 
         datapoints.append(
             Data(

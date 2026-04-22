@@ -4,7 +4,6 @@ import torch
 from configs import base_config
 from generate_data import create_dataloader
 from models import Dnar
-
 from milp_task import make_graph_state, solve_lp_relaxation
 
 
@@ -29,6 +28,7 @@ def infer_one(model, graph):
     var_nodes = torch.where(variable_mask)[0]
     chosen = var_nodes[torch.argmax(scores)].item()
     return chosen
+
 
 @torch.no_grad()
 def infer_from_oracle_lp(model, inst, fixed, device):
