@@ -13,19 +13,24 @@ from utils import from_binary_states, gumbel_softmax, node_pointer_loss, temp_by
 class StatesEncoder(torch.nn.Module):
     def __init__(self, h, num_binary_states):
         super().__init__()
+        self.num_binary_states = num_binary_states
         self.emb = torch.nn.Embedding(2**num_binary_states, h)
 
     def forward(self, states):
+        if states.shape[1] != self.num_binary_states:
+            states = states[:, : self.num_binary_states]
         return self.emb(from_binary_states(states))
 
 
 class SelectBest(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
-        h = config.h
+        self.num_node_states = config.num_node_states
         self.emb = torch.nn.Embedding(2 ** (config.num_node_states + 1), config.h)
 
     def forward(self, binary_states, scalars, index):
+        if binary_states.shape[1] != self.num_node_states:
+            binary_states = binary_states[:, : self.num_node_states]
         states = 2 * from_binary_states(binary_states)
         group_with_reciever = torch.cat(
             [torch.unsqueeze(states, -1), torch.unsqueeze(index, -1)], dim=1
