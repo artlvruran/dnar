@@ -9,7 +9,7 @@ from torch_geometric.loader import DataLoader
 
 from configs import base_config
 
-from milp_task import bnb_trace, random_feasible_milp, instance_edge_attr
+from milp_task import bnb_trace, random_feasible_milp
 
 class ProblemInstance:
     def __init__(self, adj, start, weighted, randomness):
@@ -495,21 +495,12 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
                 seed=np.random.randint(0, 1_000_000),
             )
 
-            node_fts, edge_fts, _ = ALGORITHMS["milp"](
+            node_fts, edge_fts, scalars = ALGORITHMS["milp"](
                 instance,
                 max_steps=config.milp_max_steps,
             )
 
-            edge_index, edge_attr = instance_edge_attr(instance)
-
-            node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
-            edge_fts = torch.transpose(
-                torch.tensor(edge_fts)[:, edge_index[0], edge_index[1]],
-                0,
-                1,
-            )
-
-            scalars = torch.tensor(edge_attr)
+            edge_index = torch.tensor(instance.edge_index).contiguous()
         else:
             instance = sampler(config.problem_size[split])
             node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
