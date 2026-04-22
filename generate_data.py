@@ -506,11 +506,23 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
             node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
             edge_index = torch.tensor(instance.edge_index).contiguous()
 
-        node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
-        edge_fts = torch.transpose(
-            torch.tensor(edge_fts)[:, edge_index[0], edge_index[1]], 0, 1
-        )
-        scalars = torch.transpose(torch.tensor(scalars), 0, 1)
+        node_fts = torch.transpose(torch.as_tensor(node_fts), 0, 1)
+
+        edge_fts = torch.as_tensor(edge_fts)
+        num_nodes = int(edge_index.max().item()) + 1
+
+        if edge_fts.ndim == 4 and (
+                edge_fts.shape[1] != num_nodes or edge_fts.shape[2] != num_nodes
+        ):
+            if edge_fts.shape[2] == num_nodes and edge_fts.shape[3] == num_nodes:
+                edge_fts = edge_fts.permute(0, 2, 3, 1)
+            else:
+                raise ValueError(
+                    f"Unexpected edge_fts shape {tuple(edge_fts.shape)} for num_nodes={num_nodes}"
+                )
+        edge_fts = torch.transpose(edge_fts[:, edge_index[0], edge_index[1]], 0, 1)
+
+        scalars = torch.transpose(torch.as_tensor(scalars), 0, 1)
 
         output_fts = edge_fts if config.output_type == "pointer" else node_fts
         y = output_fts[:, -1, config.output_idx].clone().detach()
