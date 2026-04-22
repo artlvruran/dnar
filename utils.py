@@ -37,12 +37,11 @@ def gumbel_softmax(logits, index, tau=1.0, use_noise=False):
 
 def from_binary_states(binary_states):
     assert binary_states.ndim == 2
-    states = torch.zeros_like(binary_states[:, 0])
-    num_degs = binary_states.shape[1]
-    degs = torch.tensor([2**deg for deg in range(num_degs)]).to(binary_states.device)
-
-    states = (binary_states * torch.unsqueeze(degs, 0)).sum(-1)
-    return states.long()
+    bits = (binary_states > 0.5).long()
+    num_degs = bits.shape[1]
+    degs = (1 << torch.arange(num_degs, device=bits.device, dtype=torch.long))
+    states = (bits * degs.unsqueeze(0)).sum(-1)
+    return states
 
 
 def node_pointer_loss(logits, gt, index):
@@ -118,8 +117,3 @@ class ModelSaver:
         path = "{}_{}".format(self.model_name, suffix)
         print("saving model: ", path)
         torch.save(model.state_dict(), path)
-
-
-NODE_POINTER_METRICS = (pointer_accuracy, pointer_accuracy_graph_level)
-NODE_MASK_METRICS = (node_mask_accuracy, node_mask_accuracy_graph_level)
-METRICS = {"pointer": NODE_POINTER_METRICS, "node_mask": NODE_MASK_METRICS}
