@@ -1,0 +1,27 @@
+algorithm: milp
+
+batch_size: 32
+learning_rate: 0.0001
+num_iterations: 2000
+eval_each: 250
+stepwise_training: true
+
+num_samples:
+  train: 1024
+  val: 128
+  test: 128
+
+problem_size:
+  train: 24
+  val: 24
+  test: 24
+
+# MILP in standard form: min c^T x, Ax <= b, x >= 0 with integer subset handled by branching.
+edge_weights: false
+generate_random_numbers: false
+
+num_node_states: 3
+num_edge_states: 2
+
+output_type: node_mask
+output_idx: 1

@@ -385,6 +385,94 @@ def mis(instance: ProblemInstance):
     return np.array(node_states), np.array(edge_states), np.array(scalars)
 
 
+def _fractionality_score(x):
+    return np.minimum(x, 1.0 - x)
+
+
+def _select_branching_variable(lp_solution, reduced_costs, pseudo_costs, heuristic):
+    frac = _fractionality_score(lp_solution)
+    fractional_mask = (lp_solution > 1e-6) & (lp_solution < 1.0 - 1e-6)
+    if not np.any(fractional_mask):
+        return int(np.argmax(np.abs(reduced_costs)))
+
+    masked_idx = np.where(fractional_mask)[0]
+    if heuristic == "max_fractionality":
+        score = frac[masked_idx]
+    elif heuristic == "reduced_cost":
+        score = np.abs(reduced_costs[masked_idx])
+    elif heuristic == "pseudo_cost":
+        score = pseudo_costs[masked_idx]
+    else:
+        raise ValueError(f"Unknown heuristic: {heuristic}")
+    return int(masked_idx[np.argmax(score)])
+
+
+def milp(instance: ProblemInstance):
+    n = instance.adj.shape[0]
+    node_states = []
+    edge_states = []
+    scalars = []
+
+    lp_solution = np.clip(instance.pos + 0.25 * np.random.randn(n), 0.0, 1.0)
+    reduced_costs = np.random.uniform(-1.0, 1.0, size=n)
+    pseudo_costs = np.random.uniform(0.0, 1.0, size=n)
+
+    heuristics = ("max_fractionality", "reduced_cost", "pseudo_cost")
+    best_h = None
+    best_gain = -1e9
+    for h in heuristics:
+        idx = _select_branching_variable(lp_solution, reduced_costs, pseudo_costs, h)
+        gain = (
+            0.6 * _fractionality_score(lp_solution[idx])
+            + 0.2 * np.abs(reduced_costs[idx])
+            + 0.2 * pseudo_costs[idx]
+        )
+        if gain > best_gain:
+            best_gain = gain
+            best_h = h
+
+    chosen_idx = _select_branching_variable(
+        lp_solution, reduced_costs, pseudo_costs, heuristic=best_h
+    )
+
+    fractional = ((lp_solution > 1e-6) & (lp_solution < 1.0 - 1e-6)).astype(np.int32)
+    chosen = np.zeros(n, dtype=np.int32)
+    chosen[chosen_idx] = 1
+    processed = np.zeros(n, dtype=np.int32)
+
+    pointers = np.eye(n, dtype=np.int32)
+    self_loops = np.eye(n, dtype=np.int32)
+    edge_scalars = lp_solution[instance.edge_index[0]]
+
+    push_states(
+        node_states,
+        edge_states,
+        scalars,
+        (fractional, chosen, processed),
+        (pointers, self_loops),
+        (edge_scalars,),
+    )
+    processed[chosen_idx] = 1
+    push_states(
+        node_states,
+        edge_states,
+        scalars,
+        (fractional, chosen, processed),
+        (pointers, self_loops),
+        (edge_scalars,),
+    )
+    while len(node_states) < n:
+        push_states(
+            node_states,
+            edge_states,
+            scalars,
+            (fractional, chosen, processed),
+            (pointers, self_loops),
+            (edge_scalars,),
+        )
+    return np.array(node_states), np.array(edge_states), np.array(scalars)
+
+
 def er_probabilities(n):
     base = math.log(n) / n
     return (base, base * 3)
@@ -437,8 +525,16 @@ SPEC["dfs"] = (
 SPEC["mst"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["dijkstra"] = ((MASK, MASK), (NODE_POINTER, NODE_POINTER))
 SPEC["mis"] = ((MASK, MASK, MASK, MASK), (NODE_POINTER,))  # MASK
+SPEC["milp"] = ((MASK, NODE_MASK_ONE, MASK), (NODE_POINTER, NODE_POINTER))
 
-ALGORITHMS = {"bfs": bfs, "dfs": dfs, "mst": mst, "dijkstra": dijkstra, "mis": mis}
+ALGORITHMS = {
+    "bfs": bfs,
+    "dfs": dfs,
+    "mst": mst,
+    "dijkstra": dijkstra,
+    "mis": mis,
+    "milp": milp,
+}
 
 
 def create_dataloader(config: base_config.Config, split: str, seed: int, device):
