@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
+from torch.nn.utils.rnn import pad_sequence
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch_geometric.utils import scatter
 
@@ -38,14 +39,22 @@ def _apply_sequence_block(x, group_ids, secondary, block):
     groups_sorted = group_ids[order]
     counts = torch.bincount(groups_sorted, minlength=int(groups_sorted.max().item()) + 1)
 
-    out = []
+    lengths = counts[counts > 0].tolist()
+    seqs = []
     start = 0
-    for length in counts.tolist():
-        seq = x_sorted[start : start + length]
-        out.append(block(seq))
+    for length in lengths:
+        seqs.append(x_sorted[start : start + length])
         start += length
 
-    y_sorted = torch.cat(out, dim=0)
+    if len(seqs) == 1:
+        y_sorted = block(seqs[0])
+    else:
+        padded = pad_sequence(seqs, batch_first=True)
+        y_padded = block(padded)
+        y_sorted = torch.cat(
+            [y_padded[i, :length] for i, length in enumerate(lengths)], dim=0
+        )
+
     inv = torch.empty_like(order)
     inv[order] = torch.arange(order.numel(), device=x.device)
     return y_sorted[inv]
@@ -92,7 +101,7 @@ class _TinyMambaBlock(torch.nn.Module):
             d_state=d_state,
             d_conv=d_conv,
             expand=expand,
-        )
+        ).float()
 
     def forward(self, x):
         if x.numel() == 0:
@@ -114,7 +123,6 @@ class _TinyMambaBlock(torch.nn.Module):
             z = z.unsqueeze(0)
             squeeze = True
 
-        self.mamba = self.mamba.float()
         y = self.mamba(z.to(torch.float32))
 
         if squeeze:
