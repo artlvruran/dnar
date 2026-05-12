@@ -509,6 +509,13 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
             node_fts, edge_fts, scalars = ALGORITHMS[config.algorithm](instance)
 
         edge_index = torch.tensor(instance.edge_index).contiguous()
+        num_nodes = instance.adj.shape[0]
+        deg = np.bincount(instance.edge_index[0], minlength=num_nodes) + np.bincount(
+            instance.edge_index[1], minlength=num_nodes
+        )
+        node_order = torch.tensor(
+            deg * (num_nodes + 1) + np.arange(num_nodes), dtype=torch.long
+        )
 
         node_fts = torch.transpose(torch.tensor(node_fts), 0, 1)
         edge_fts = torch.transpose(
@@ -524,6 +531,7 @@ def create_dataloader(config: base_config.Config, split: str, seed: int, device)
             "edge_fts": edge_fts,
             "scalars": scalars,
             "edge_index": edge_index,
+            "node_order": node_order,
             "y": y,
         }
 

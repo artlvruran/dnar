@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
-from torch.nn.utils.rnn import pad_sequence
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch_geometric.utils import scatter
 
@@ -39,22 +38,14 @@ def _apply_sequence_block(x, group_ids, secondary, block):
     groups_sorted = group_ids[order]
     counts = torch.bincount(groups_sorted, minlength=int(groups_sorted.max().item()) + 1)
 
-    lengths = counts[counts > 0].tolist()
-    seqs = []
+    out = []
     start = 0
-    for length in lengths:
-        seqs.append(x_sorted[start : start + length])
+    for length in counts.tolist():
+        seq = x_sorted[start : start + length]
+        out.append(block(seq))
         start += length
 
-    if len(seqs) == 1:
-        y_sorted = block(seqs[0])
-    else:
-        padded = pad_sequence(seqs, batch_first=True)
-        y_padded = block(padded)
-        y_sorted = torch.cat(
-            [y_padded[i, :length] for i, length in enumerate(lengths)], dim=0
-        )
-
+    y_sorted = torch.cat(out, dim=0)
     inv = torch.empty_like(order)
     inv[order] = torch.arange(order.numel(), device=x.device)
     return y_sorted[inv]
@@ -154,6 +145,8 @@ class MambaMessagePassing(torch.nn.Module):
         )
 
     def _node_order(self, batch, num_nodes, device):
+        if hasattr(batch, "node_order"):
+            return batch.node_order.to(device)
         deg = torch.bincount(batch.edge_index[0], minlength=num_nodes) + torch.bincount(
             batch.edge_index[1], minlength=num_nodes
         )
