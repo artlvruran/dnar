@@ -7,7 +7,6 @@ import torch
 from torch_geometric.utils import group_argsort, scatter, softmax
 from generate_data import ProblemInstance, dijkstra, sat
 from torch_geometric.data import Batch, Data
-from torch_geometric.utils import group_argsort
 
 
 def reverse_edge_index(edge_index):
@@ -32,9 +31,21 @@ def gumbel_softmax(logits, index, tau=1.0, use_noise=False):
             .log()
         )
         logits = logits + noise
+
+    index = index.long()
+
     if tau == 0.0:
-        y_hard = 1.0 * (group_argsort(logits, index, descending=True, stable=True) == 0)
-        return y_hard
+        if logits.numel() == 0:
+            return logits
+        scores = logits.float()
+        tie_break = (
+            torch.arange(scores.numel(), device=scores.device, dtype=scores.dtype)
+            * torch.finfo(scores.dtype).eps
+        )
+        scores = scores - tie_break
+        group_max = scatter(scores, index, reduce="max")
+        return (scores == group_max[index]).to(logits.dtype)
+
     logits = logits / tau
     return softmax(logits, index)
 

@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
 from torch.nn.functional import binary_cross_entropy_with_logits
-from torch_geometric.utils import scatter
+from torch_geometric.utils import scatter, to_dense_batch
 
 from configs import base_config
 from generate_data import EDGE_MASK_ONE, MASK, NODE_MASK_ONE, NODE_POINTER, SPEC
@@ -22,30 +22,23 @@ def _edge_scalar_column(scalars):
     return scalars.reshape(scalars.shape[0], -1)[:, :1]
 
 
-def _sequence_order_key(group_ids, secondary):
-    group_ids = group_ids.long()
-    secondary = secondary.long()
-    scale = int(secondary.max().item()) + 1 if secondary.numel() else 1
-    return group_ids * scale + secondary
-
-
-def _apply_sequence_block(x, group_ids, secondary, block):
+def _batched_sequence_block(x, group_ids, secondary, block):
     if x.numel() == 0:
         return x
 
-    order = torch.argsort(_sequence_order_key(group_ids, secondary), stable=True)
+    group_ids = group_ids.long()
+    secondary = secondary.long()
+
+    scale = int(secondary.max().item()) + 1 if secondary.numel() else 1
+    order = torch.argsort(group_ids * scale + secondary, stable=True)
+
     x_sorted = x[order]
-    groups_sorted = group_ids[order]
-    counts = torch.bincount(groups_sorted, minlength=int(groups_sorted.max().item()) + 1)
+    group_sorted = group_ids[order]
 
-    out = []
-    start = 0
-    for length in counts.tolist():
-        seq = x_sorted[start : start + length]
-        out.append(block(seq))
-        start += length
+    dense, mask = to_dense_batch(x_sorted, group_sorted)
+    dense_out = block(dense)
+    y_sorted = dense_out[mask]
 
-    y_sorted = torch.cat(out, dim=0)
     inv = torch.empty_like(order)
     inv[order] = torch.arange(order.numel(), device=x.device)
     return y_sorted[inv]
@@ -68,12 +61,11 @@ class SelectBest(torch.nn.Module):
 
     def forward(self, binary_states, scalars, index):
         states = 2 * from_binary_states(binary_states)
-        group_with_reciever = torch.cat(
-            [torch.unsqueeze(states, -1), torch.unsqueeze(index, -1)], dim=1
-        )
-        _, group_index = torch.unique(
-            group_with_reciever, sorted=False, return_inverse=True, dim=0
-        )
+        if index.numel() == 0:
+            return self.emb(states.long())
+
+        num_receivers = int(index.max().item()) + 1
+        group_index = states.long() * num_receivers + index.long()
 
         best_in_group = gumbel_softmax(
             -scalars.squeeze(), group_index, tau=0.0, use_noise=False
@@ -173,7 +165,7 @@ class MambaMessagePassing(torch.nn.Module):
 
         node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
         node_order = self._node_order(batch, node_tokens.size(0), node_tokens.device)
-        node_ctx = _apply_sequence_block(node_tokens, batch.batch, node_order, self.node_mamba)
+        node_ctx = _batched_sequence_block(node_tokens, batch.batch, node_order, self.node_mamba)
 
         edge_emb = self.edge_states_encoder(edge_states)
         static_fts = self.compute_static_fts(scalars, batch)
