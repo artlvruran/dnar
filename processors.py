@@ -3,8 +3,9 @@ import math
 import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ModuleList, ReLU, Sequential
+from torch.nn.utils.rnn import pad_sequence
 from torch.nn.functional import binary_cross_entropy_with_logits
-from torch_geometric.utils import scatter, to_dense_batch
+from torch_geometric.utils import scatter
 
 from configs import base_config
 from generate_data import EDGE_MASK_ONE, MASK, NODE_MASK_ONE, NODE_POINTER, SPEC
@@ -22,7 +23,7 @@ def _edge_scalar_column(scalars):
     return scalars.reshape(scalars.shape[0], -1)[:, :1]
 
 
-def _batched_sequence_block(x, group_ids, secondary, block):
+def _batched_sequence_block(x, group_ids, secondary, block, min_seq_len=32):
     if x.numel() == 0:
         return x
 
@@ -34,11 +35,39 @@ def _batched_sequence_block(x, group_ids, secondary, block):
 
     x_sorted = x[order]
     group_sorted = group_ids[order]
+    counts = torch.bincount(group_sorted, minlength=int(group_sorted.max().item()) + 1)
 
-    dense, mask = to_dense_batch(x_sorted, group_sorted)
-    dense_out = block(dense)
-    y_sorted = dense_out[mask]
+    lengths = counts.tolist()
+    outputs = [None] * len(lengths)
+    buckets = {}
+    start = 0
 
+    for gid, length in enumerate(lengths):
+        seq = x_sorted[start : start + length]
+        start += length
+
+        if length == 0 or length < min_seq_len:
+            outputs[gid] = seq
+            continue
+
+        bucket_key = 1 << (length - 1).bit_length()
+        buckets.setdefault(bucket_key, []).append((gid, seq))
+
+    for _, items in buckets.items():
+        gids = [gid for gid, _ in items]
+        seqs = [seq for _, seq in items]
+
+        if len(seqs) == 1:
+            outs = [block(seqs[0])]
+        else:
+            padded = pad_sequence(seqs, batch_first=True)
+            padded_out = block(padded)
+            outs = [padded_out[i, :seq.size(0)] for i, seq in enumerate(seqs)]
+
+        for gid, out_seq in zip(gids, outs):
+            outputs[gid] = out_seq
+
+    y_sorted = torch.cat(outputs, dim=0)
     inv = torch.empty_like(order)
     inv[order] = torch.arange(order.numel(), device=x.device)
     return y_sorted[inv]
@@ -119,6 +148,7 @@ class MambaMessagePassing(torch.nn.Module):
         super().__init__()
         h = config.h
         self.h = h
+        self.min_seq_len = getattr(config, "mamba_min_seq_len", 32)
 
         self.edge_states_encoder = StatesEncoder(h, config.num_edge_states)
         self.node_states_encoder = StatesEncoder(h, config.num_node_states)
@@ -165,7 +195,9 @@ class MambaMessagePassing(torch.nn.Module):
 
         node_tokens = self.select_best_from_virtual(node_states, scalars, batch)
         node_order = self._node_order(batch, node_tokens.size(0), node_tokens.device)
-        node_ctx = _batched_sequence_block(node_tokens, batch.batch, node_order, self.node_mamba)
+        node_ctx = _batched_sequence_block(
+            node_tokens, batch.batch, node_order, self.node_mamba, self.min_seq_len
+        )
 
         edge_emb = self.edge_states_encoder(edge_states)
         static_fts = self.compute_static_fts(scalars, batch)
