@@ -1,0 +1,421 @@
+{
+  "created_at": "2026-04-02T16:05:31",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+  "modes": [
+    "source_container_dest",
+    "source_container"
+  ],
+  "capacity_policies": [
+    "max",
+    "p75",
+    "median"
+  ],
+  "summary": [
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "max",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 20786,
+      "reduction_ratio": 1.4201,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.013,
+      "full_batches": 0,
+      "partial_batches": 20786,
+      "groups_total": 20786,
+      "groups_ge_capacity": 0,
+      "agents_total": 626,
+      "trips_per_agent": 33.204,
+      "km_lower_bound": 551857.448,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 6.5293,
+      "hours_lower_bound": 28877.255,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 4.613
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "p75",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 20792,
+      "reduction_ratio": 1.4197,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.0487,
+      "full_batches": 6,
+      "partial_batches": 20786,
+      "groups_total": 20786,
+      "groups_ge_capacity": 6,
+      "agents_total": 626,
+      "trips_per_agent": 33.214,
+      "km_lower_bound": 551930.418,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 6.5302,
+      "hours_lower_bound": 28882.284,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 4.6138
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "median",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 20801,
+      "reduction_ratio": 1.4191,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.0686,
+      "full_batches": 15,
+      "partial_batches": 20786,
+      "groups_total": 20786,
+      "groups_ge_capacity": 10,
+      "agents_total": 626,
+      "trips_per_agent": 33.228,
+      "km_lower_bound": 552077.2,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 6.5319,
+      "hours_lower_bound": 28891.718,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 4.6153
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "max",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 12907,
+      "reduction_ratio": 2.287,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.0195,
+      "full_batches": 0,
+      "partial_batches": 12907,
+      "groups_total": 12907,
+      "groups_ge_capacity": 0,
+      "agents_total": 626,
+      "trips_per_agent": 20.618,
+      "km_lower_bound": 347997.078,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 4.1173,
+      "hours_lower_bound": 18212.998,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 2.9094
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "p75",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 12914,
+      "reduction_ratio": 2.2857,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.0767,
+      "full_batches": 7,
+      "partial_batches": 12907,
+      "groups_total": 12907,
+      "groups_ge_capacity": 7,
+      "agents_total": 626,
+      "trips_per_agent": 20.629,
+      "km_lower_bound": 348113.023,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 4.1187,
+      "hours_lower_bound": 18220.04,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 2.9105
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "median",
+      "total_tasks_before": 29518,
+      "total_tasks_after": 12928,
+      "reduction_ratio": 2.2833,
+      "total_mass_tons": 11731.35,
+      "avg_batch_fill_ratio": 0.1083,
+      "full_batches": 21,
+      "partial_batches": 12907,
+      "groups_total": 12907,
+      "groups_ge_capacity": 16,
+      "agents_total": 626,
+      "trips_per_agent": 20.652,
+      "km_lower_bound": 348372.065,
+      "km_capacity_total": 84520.0,
+      "km_lb_to_capacity_ratio": 4.1218,
+      "hours_lower_bound": 18235.928,
+      "hours_capacity_total": 6260.0,
+      "hours_lb_to_capacity_ratio": 2.9131
+    }
+  ],
+  "by_container": [
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "max",
+      "container": "A",
+      "batched_tasks": 11303,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 26.164,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "max",
+      "container": "B",
+      "batched_tasks": 3616,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 12.094,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "max",
+      "container": "C",
+      "batched_tasks": 2312,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 11.918,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "max",
+      "container": "D",
+      "batched_tasks": 3555,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 30.647,
+      "mass_tons": 954.612
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "p75",
+      "container": "A",
+      "batched_tasks": 11305,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 26.169,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "p75",
+      "container": "B",
+      "batched_tasks": 3616,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 12.094,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "p75",
+      "container": "C",
+      "batched_tasks": 2315,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 11.933,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "p75",
+      "container": "D",
+      "batched_tasks": 3556,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 30.655,
+      "mass_tons": 954.612
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "median",
+      "container": "A",
+      "batched_tasks": 11307,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 26.174,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "median",
+      "container": "B",
+      "batched_tasks": 3616,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 12.094,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "median",
+      "container": "C",
+      "batched_tasks": 2321,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 11.964,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container_dest",
+      "capacity_policy": "median",
+      "container": "D",
+      "batched_tasks": 3557,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 30.664,
+      "mass_tons": 954.612
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "max",
+      "container": "A",
+      "batched_tasks": 6306,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 14.597,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "max",
+      "container": "B",
+      "batched_tasks": 2820,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 9.431,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "max",
+      "container": "C",
+      "batched_tasks": 1965,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 10.129,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "max",
+      "container": "D",
+      "batched_tasks": 1816,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 15.655,
+      "mass_tons": 954.612
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "p75",
+      "container": "A",
+      "batched_tasks": 6309,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 14.604,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "p75",
+      "container": "B",
+      "batched_tasks": 2820,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 9.431,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "p75",
+      "container": "C",
+      "batched_tasks": 1968,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 10.144,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "p75",
+      "container": "D",
+      "batched_tasks": 1817,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 15.664,
+      "mass_tons": 954.612
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "median",
+      "container": "A",
+      "batched_tasks": 6312,
+      "compatible_agents": 432,
+      "trips_per_compatible_agent": 14.611,
+      "mass_tons": 4302.662
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "median",
+      "container": "B",
+      "batched_tasks": 2821,
+      "compatible_agents": 299,
+      "trips_per_compatible_agent": 9.435,
+      "mass_tons": 2710.106
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "median",
+      "container": "C",
+      "batched_tasks": 1977,
+      "compatible_agents": 194,
+      "trips_per_compatible_agent": 10.191,
+      "mass_tons": 3763.97
+    },
+    {
+      "mode": "source_container",
+      "capacity_policy": "median",
+      "container": "D",
+      "batched_tasks": 1818,
+      "compatible_agents": 116,
+      "trips_per_compatible_agent": 15.672,
+      "mass_tons": 954.612
+    }
+  ],
+  "capacity_policy_values": {
+    "Type1": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "Type2": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "Type3": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "Type4": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "TypeRNO": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "TypeO2P": {
+      "max": 0.0,
+      "p75": 0.0,
+      "median": 0.0,
+      "min": 0.0
+    },
+    "A": {
+      "max": 41.0,
+      "p75": 11.73,
+      "median": 8.0,
+      "min": 1.6
+    },
+    "B": {
+      "max": 41.0,
+      "p75": 12.0,
+      "median": 9.0,
+      "min": 4.628
+    },
+    "C": {
+      "max": 99.0,
+      "p75": 15.1375,
+      "median": 10.0,
+      "min": 1.0
+    },
+    "D": {
+      "max": 18.0,
+      "p75": 8.4,
+      "median": 6.965,
+      "min": 2.58
+    }
+  }
+}

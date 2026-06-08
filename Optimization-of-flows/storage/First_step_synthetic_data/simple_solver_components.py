@@ -1,0 +1,1074 @@
+from __future__ import annotations
+
+from collections import defaultdict
+import argparse
+from dataclasses import dataclass, field
+from pathlib import Path
+import json
+import math
+import sys
+from typing import Any
+
+import matplotlib.pyplot as plt
+import networkx as nx
+
+ROOT = Path(__file__).resolve().parent
+DATA_DIR = ROOT / "data"
+if str(DATA_DIR) not in sys.path:
+    sys.path.insert(0, str(DATA_DIR))
+
+from dataset import CONTAINER_TO_VEHICLE_TYPES, Route, RoutingDataset, Task, dataset_from_dict
+
+
+DEFAULT_DATASET_PATH = ROOT / "data" / "realistic_spb_full_tz" / "dataset_full_tz.json"
+
+# Daily limits used by this simple solver to prove one-day feasibility.
+MAX_DAILY_KM_BY_TYPE: dict[str, float] = {
+    "Type1": 130.0,
+    "Type2": 140.0,
+    "Type1-2": 95.0,
+    "Type3": 140.0,
+    "Type4": 120.0,
+    "TypeRNO": 110.0,
+    "TypeO2P": 200.0,
+}
+
+MAX_SHIFT_HOURS_BY_TYPE: dict[str, float] = {
+    "Type1": 10.0,
+    "Type2": 10.0,
+    "Type1-2": 9.0,
+    "Type3": 10.0,
+    "Type4": 10.0,
+    "TypeRNO": 9.5,
+    "TypeO2P": 11.0,
+}
+
+AVG_SPEED_KMPH_BY_TYPE: dict[str, float] = {
+    "Type1": 24.0,
+    "Type2": 24.0,
+    "Type1-2": 22.0,
+    "Type3": 22.0,
+    "Type4": 21.0,
+    "TypeRNO": 23.0,
+    "TypeO2P": 28.0,
+}
+
+SERVICE_HOURS_BY_CONTAINER: dict[str, float] = {
+    "Type1": 0.22,
+    "Type2": 0.24,
+    "Type3": 0.35,
+    "Type4": 0.32,
+    "TypeRNO": 0.28,
+    "TypeO2P": 0.30,
+}
+
+
+@dataclass
+class AgentState:
+    agent_id: str
+    vehicle_type: str
+    capacity_tons: float
+    is_compact: bool
+    depot_node: str | None
+    current_node: str | None
+    task_ids: list[str] = field(default_factory=list)
+    route_ids: list[str] = field(default_factory=list)
+    deadhead_km: float = 0.0
+    task_km: float = 0.0
+    service_hours: float = 0.0
+    drive_hours: float = 0.0
+
+    @property
+    def total_km(self) -> float:
+        return self.deadhead_km + self.task_km
+
+    @property
+    def total_hours(self) -> float:
+        return self.service_hours + self.drive_hours
+
+
+@dataclass
+class AgentDayPlan:
+    ordered_tasks: list[Task]
+    service_paths: dict[str, tuple[str, ...]]
+    deadhead_km: float
+    task_km: float
+    drive_hours: float
+    service_hours: float
+    total_km: float
+    total_hours: float
+    feasible: bool
+
+
+def load_dataset(path: Path) -> tuple[RoutingDataset, dict[str, Any]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    dataset = dataset_from_dict(payload)
+    dataset.validate()
+    return dataset, payload
+
+
+def build_nx_graph(dataset: RoutingDataset) -> nx.DiGraph:
+    graph = nx.DiGraph()
+    for node_id, node in dataset.graph.nodes.items():
+        graph.add_node(node_id, x=node.x, y=node.y, kind=node.kind)
+    for edge in dataset.graph.edges:
+        if graph.has_edge(edge.source_id, edge.target_id):
+            curr = graph[edge.source_id][edge.target_id]["distance_km"]
+            if edge.distance_km < curr:
+                graph[edge.source_id][edge.target_id]["distance_km"] = edge.distance_km
+        else:
+            graph.add_edge(edge.source_id, edge.target_id, distance_km=edge.distance_km)
+    return graph
+
+
+def path_distance(graph: nx.DiGraph, path: list[str]) -> float:
+    return sum(graph[path[i]][path[i + 1]]["distance_km"] for i in range(len(path) - 1))
+
+
+def shortest_path_cached(
+    graph: nx.DiGraph,
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+    source: str,
+    target: str,
+) -> tuple[list[str], float] | None:
+    key = (source, target)
+    if key in cache:
+        return cache[key]
+    if source == target:
+        cache[key] = ([source], 0.0)
+        return cache[key]
+    try:
+        path = nx.shortest_path(graph, source=source, target=target, weight="distance_km")
+    except nx.NetworkXNoPath:
+        cache[key] = None
+        return None
+    dist = path_distance(graph, path)
+    cache[key] = (path, dist)
+    return cache[key]
+
+
+def check_reachability(
+    graph: nx.DiGraph,
+    dataset: RoutingDataset,
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+) -> dict[str, Any]:
+    weak_components = list(nx.weakly_connected_components(graph))
+    largest_weak = max((len(c) for c in weak_components), default=0)
+    strong_components = list(nx.strongly_connected_components(graph))
+    largest_strong = max((len(c) for c in strong_components), default=0)
+
+    unreachable_tasks: list[str] = []
+    for task in dataset.tasks:
+        if shortest_path_cached(graph, cache, task.source_node_id, task.destination_node_id) is None:
+            unreachable_tasks.append(task.task_id)
+
+    special_nodes = [
+        node.node_id
+        for node in dataset.graph.nodes.values()
+        if node.kind in {"mno", "object1", "object2", "depot"}
+    ]
+    unreachable_special_nodes: list[str] = []
+    object1_ids = [n.node_id for n in dataset.graph.nodes.values() if n.kind == "object1"]
+    object2_ids = [n.node_id for n in dataset.graph.nodes.values() if n.kind == "object2"]
+
+    for node_id in special_nodes:
+        node_kind = dataset.graph.nodes[node_id].kind
+        if node_kind == "mno":
+            reachable = any(
+                shortest_path_cached(graph, cache, node_id, target) is not None for target in object1_ids
+            )
+        elif node_kind == "object1":
+            # Sandbox datasets may intentionally disable second shoulder.
+            if not object2_ids:
+                reachable = True
+            else:
+                reachable = any(
+                    shortest_path_cached(graph, cache, node_id, target) is not None for target in object2_ids
+                )
+        else:
+            reachable = True
+        if not reachable:
+            unreachable_special_nodes.append(node_id)
+
+    return {
+        "weakly_connected_components": len(weak_components),
+        "largest_weak_component_size": largest_weak,
+        "strongly_connected_components": len(strong_components),
+        "largest_strong_component_size": largest_strong,
+        "unreachable_tasks": unreachable_tasks,
+        "unreachable_special_nodes": unreachable_special_nodes,
+    }
+
+
+def initialize_agent_states(dataset: RoutingDataset, payload: dict[str, Any]) -> dict[str, AgentState]:
+    depots = payload.get("metadata", {}).get("agent_depots", {})
+    depot_nodes = [n.node_id for n in dataset.graph.nodes.values() if n.kind == "depot"]
+    fallback_depot = depot_nodes[0] if depot_nodes else None
+    states: dict[str, AgentState] = {}
+    for agent in dataset.fleet.agents.values():
+        depot_node = depots.get(agent.agent_id, fallback_depot)
+        states[agent.agent_id] = AgentState(
+            agent_id=agent.agent_id,
+            vehicle_type=agent.vehicle_type,
+            capacity_tons=agent.capacity_tons,
+            is_compact=agent.is_compact,
+            depot_node=depot_node,
+            current_node=depot_node,
+        )
+    return states
+
+
+def compatible_agents(dataset: RoutingDataset, states: dict[str, AgentState], task) -> list[AgentState]:
+    source_node = dataset.graph.nodes[task.source_node_id]
+    allowed_types = CONTAINER_TO_VEHICLE_TYPES[task.container_type]
+    agents = []
+    for state in states.values():
+        if state.vehicle_type not in allowed_types:
+            continue
+        if state.capacity_tons + 1e-9 < task.mass_tons:
+            continue
+        if source_node.center and not state.is_compact:
+            continue
+        agents.append(state)
+    return agents
+
+
+def order_agent_tasks_by_nearest_source(
+    state: AgentState,
+    tasks: list[Task],
+    graph: nx.DiGraph,
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+) -> tuple[list[Task], dict[str, tuple[str, ...]]] | None:
+    if not tasks:
+        return [], {}
+    if state.depot_node is None:
+        return None
+
+    remaining = {task.task_id: task for task in tasks}
+    ordered: list[Task] = []
+    service_paths: dict[str, tuple[str, ...]] = {}
+    current = state.depot_node
+
+    while remaining:
+        best: tuple[float, float, str, tuple[str, ...]] | None = None
+        for task in remaining.values():
+            reposition = shortest_path_cached(graph, cache, current, task.source_node_id)
+            if reposition is None:
+                continue
+            service = shortest_path_cached(graph, cache, task.source_node_id, task.destination_node_id)
+            if service is None:
+                continue
+            _, reposition_km = reposition
+            service_nodes, service_km = service
+            # First leg is closest next source; tie-break by service segment length.
+            score = (reposition_km, service_km, task.task_id, tuple(service_nodes))
+            if best is None or score < best:
+                best = score
+
+        if best is None:
+            return None
+
+        _, _, next_task_id, service_nodes = best
+        next_task = remaining.pop(next_task_id)
+        ordered.append(next_task)
+        service_paths[next_task_id] = service_nodes
+        current = next_task.destination_node_id
+
+    return ordered, service_paths
+
+
+def evaluate_agent_task_set(
+    state: AgentState,
+    tasks: list[Task],
+    graph: nx.DiGraph,
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+) -> AgentDayPlan | None:
+    ordered_result = order_agent_tasks_by_nearest_source(state, tasks, graph, cache)
+    if ordered_result is None:
+        return None
+    ordered_tasks, service_paths = ordered_result
+
+    if not ordered_tasks:
+        return AgentDayPlan(
+            ordered_tasks=[],
+            service_paths={},
+            deadhead_km=0.0,
+            task_km=0.0,
+            drive_hours=0.0,
+            service_hours=0.0,
+            total_km=0.0,
+            total_hours=0.0,
+            feasible=True,
+        )
+
+    assert state.depot_node is not None
+    speed = AVG_SPEED_KMPH_BY_TYPE[state.vehicle_type]
+    current = state.depot_node
+    deadhead_km = 0.0
+    task_km = 0.0
+    drive_hours = 0.0
+    service_hours = 0.0
+
+    for task in ordered_tasks:
+        reposition = shortest_path_cached(graph, cache, current, task.source_node_id)
+        service = shortest_path_cached(graph, cache, task.source_node_id, task.destination_node_id)
+        if reposition is None or service is None:
+            return None
+
+        _, reposition_km = reposition
+        _, service_km = service
+        deadhead_km += reposition_km
+        task_km += service_km
+        drive_hours += (reposition_km + service_km) / speed
+        service_hours += SERVICE_HOURS_BY_CONTAINER[task.container_type]
+        current = task.destination_node_id
+
+    back = shortest_path_cached(graph, cache, current, state.depot_node)
+    if back is None:
+        return None
+    _, back_km = back
+    deadhead_km += back_km
+    drive_hours += back_km / speed
+
+    total_km = deadhead_km + task_km
+    total_hours = drive_hours + service_hours
+    feasible = (
+        total_km <= MAX_DAILY_KM_BY_TYPE[state.vehicle_type] + 1e-9
+        and total_hours <= MAX_SHIFT_HOURS_BY_TYPE[state.vehicle_type] + 1e-9
+    )
+
+    return AgentDayPlan(
+        ordered_tasks=ordered_tasks,
+        service_paths=service_paths,
+        deadhead_km=deadhead_km,
+        task_km=task_km,
+        drive_hours=drive_hours,
+        service_hours=service_hours,
+        total_km=total_km,
+        total_hours=total_hours,
+        feasible=feasible,
+    )
+
+
+def assign_tasks_greedy(
+    dataset: RoutingDataset,
+    graph: nx.DiGraph,
+    payload: dict[str, Any],
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+) -> tuple[list[Route], dict[str, AgentState], list[str]]:
+    states = initialize_agent_states(dataset, payload)
+    first_shoulder = [t for t in dataset.tasks if t.container_type != "TypeO2P"]
+    second_shoulder = [t for t in dataset.tasks if t.container_type == "TypeO2P"]
+    first_shoulder.sort(
+        key=lambda t: (dataset.graph.nodes[t.source_node_id].center, t.mass_tons),
+        reverse=True,
+    )
+    second_shoulder.sort(key=lambda t: t.mass_tons, reverse=True)
+    ordered_tasks = first_shoulder + second_shoulder
+
+    allocated: dict[str, list[Task]] = {agent_id: [] for agent_id in states}
+    unassigned: list[str] = []
+
+    # Phase 1: allocate points/tasks to agents.
+    for task in ordered_tasks:
+        if shortest_path_cached(graph, cache, task.source_node_id, task.destination_node_id) is None:
+            unassigned.append(task.task_id)
+            continue
+
+        candidates = compatible_agents(dataset, states, task)
+        if not candidates:
+            unassigned.append(task.task_id)
+            continue
+        has_non_compact_candidate = any(not candidate.is_compact for candidate in candidates)
+
+        best_choice: tuple[float, str, AgentDayPlan] | None = None
+        for candidate in candidates:
+            trial_tasks = allocated[candidate.agent_id] + [task]
+            trial_plan = evaluate_agent_task_set(candidate, trial_tasks, graph, cache)
+            if trial_plan is None or not trial_plan.feasible:
+                continue
+
+            compact_penalty = 0.0
+            if has_non_compact_candidate and candidate.is_compact and not dataset.graph.nodes[task.source_node_id].center:
+                # Preserve compact vehicles for center-constrained tasks.
+                compact_penalty = 1000.0
+
+            # Mild balancing term avoids collapsing all points onto one agent.
+            balance_penalty = 0.45 * len(trial_tasks)
+            score = trial_plan.total_km + compact_penalty + balance_penalty
+            if best_choice is None or score < best_choice[0]:
+                best_choice = (score, candidate.agent_id, trial_plan)
+
+        if best_choice is None:
+            unassigned.append(task.task_id)
+            continue
+
+        _, agent_id, _ = best_choice
+        allocated[agent_id].append(task)
+
+    # Phase 2: for each agent build ordered cycle (depot -> tasks -> depot).
+    routes: list[Route] = []
+    route_counter = 1
+
+    for agent_id, state in states.items():
+        tasks_for_agent = allocated[agent_id]
+        if not tasks_for_agent:
+            continue
+
+        final_plan = evaluate_agent_task_set(state, tasks_for_agent, graph, cache)
+        if final_plan is None or not final_plan.feasible:
+            # Defensive fallback: keep feasibility guarantees explicit.
+            for task in tasks_for_agent:
+                unassigned.append(task.task_id)
+            allocated[agent_id] = []
+            continue
+
+        state.task_ids = [task.task_id for task in final_plan.ordered_tasks]
+        state.deadhead_km = final_plan.deadhead_km
+        state.task_km = final_plan.task_km
+        state.drive_hours = final_plan.drive_hours
+        state.service_hours = final_plan.service_hours
+        state.current_node = state.depot_node
+        state.route_ids = []
+
+        for task in final_plan.ordered_tasks:
+            route_id = f"SOL_ROUTE_{route_counter:04d}"
+            route_counter += 1
+            state.route_ids.append(route_id)
+            routes.append(
+                Route(
+                    route_id=route_id,
+                    agent_id=agent_id,
+                    path=final_plan.service_paths[task.task_id],
+                    task_ids=(task.task_id,),
+                )
+            )
+
+    return routes, states, unassigned
+
+
+def build_solution_dataset(base_dataset: RoutingDataset, routes: list[Route]) -> RoutingDataset:
+    solved = RoutingDataset(
+        graph=base_dataset.graph,
+        fleet=base_dataset.fleet,
+        tasks=base_dataset.tasks,
+        routes=routes,
+        metadata={
+            **base_dataset.metadata,
+            "solver": "simple_allocate_then_cycle_solver",
+            "daily_limits": {
+                "max_daily_km_by_type": MAX_DAILY_KM_BY_TYPE,
+                "max_shift_hours_by_type": MAX_SHIFT_HOURS_BY_TYPE,
+                "avg_speed_kmph_by_type": AVG_SPEED_KMPH_BY_TYPE,
+                "service_hours_by_container": SERVICE_HOURS_BY_CONTAINER,
+            },
+        },
+    )
+    solved.validate()
+    return solved
+
+
+def validate_daily_limits(states: dict[str, AgentState]) -> list[dict[str, Any]]:
+    violations: list[dict[str, Any]] = []
+    for state in states.values():
+        if not state.task_ids:
+            continue
+        km_limit = MAX_DAILY_KM_BY_TYPE[state.vehicle_type]
+        h_limit = MAX_SHIFT_HOURS_BY_TYPE[state.vehicle_type]
+        if state.total_km > km_limit + 1e-9:
+            violations.append(
+                {
+                    "agent_id": state.agent_id,
+                    "type": "km_limit",
+                    "value": round(state.total_km, 3),
+                    "limit": km_limit,
+                }
+            )
+        if state.total_hours > h_limit + 1e-9:
+            violations.append(
+                {
+                    "agent_id": state.agent_id,
+                    "type": "time_limit",
+                    "value": round(state.total_hours, 3),
+                    "limit": h_limit,
+                }
+            )
+    return violations
+
+
+def tr_by_shoulder(routes: list[Route], dataset: RoutingDataset) -> dict[str, float]:
+    task_by_id = {task.task_id: task for task in dataset.tasks}
+    edge_distance = {(edge.source_id, edge.target_id): edge.distance_km for edge in dataset.graph.edges}
+
+    first = 0.0
+    second = 0.0
+    for route in routes:
+        task = task_by_id[route.task_ids[0]]
+        dist = 0.0
+        for i in range(len(route.path) - 1):
+            dist += edge_distance[(route.path[i], route.path[i + 1])]
+        tr = task.mass_tons * dist
+        if task.container_type == "TypeO2P":
+            second += tr
+        else:
+            first += tr
+    return {"first_shoulder_ton_km": round(first, 3), "second_shoulder_ton_km": round(second, 3)}
+
+
+def object_capacity_summary(dataset: RoutingDataset) -> dict[str, Any]:
+    load_by_object: dict[str, float] = defaultdict(float)
+    for task in dataset.tasks:
+        load_by_object[task.destination_node_id] += task.mass_tons
+
+    rows: list[dict[str, Any]] = []
+    for node in dataset.graph.nodes.values():
+        if not node.kind.startswith("object"):
+            continue
+        day_load = round(load_by_object.get(node.node_id, 0.0), 3)
+        day_cap = node.object_day_capacity_tons
+        year_cap = node.object_year_capacity_tons
+        utilization = round(day_load / day_cap, 3) if day_cap > 0 else None
+        theoretical_full_days = round(year_cap / day_load, 1) if day_load > 0 else None
+        rows.append(
+            {
+                "object_id": node.node_id,
+                "kind": node.kind,
+                "day_load_tons": day_load,
+                "day_capacity_tons": day_cap,
+                "day_capacity_ok": (day_load <= day_cap) if day_cap > 0 else True,
+                "day_utilization": utilization,
+                "year_capacity_tons": year_cap,
+                "theoretical_days_at_current_daily_load": theoretical_full_days,
+            }
+        )
+    return {"objects": rows}
+
+
+def build_solution_plan(routes: list[Route], dataset: RoutingDataset, states: dict[str, AgentState]) -> dict[str, Any]:
+    task_by_id = {task.task_id: task for task in dataset.tasks}
+    edges = {(e.source_id, e.target_id): e.distance_km for e in dataset.graph.edges}
+
+    route_entries: list[dict[str, Any]] = []
+    for route in routes:
+        task = task_by_id[route.task_ids[0]]
+        dist = 0.0
+        for i in range(len(route.path) - 1):
+            dist += edges[(route.path[i], route.path[i + 1])]
+        route_entries.append(
+            {
+                "route_id": route.route_id,
+                "agent_id": route.agent_id,
+                "task_id": task.task_id,
+                "container_type": task.container_type,
+                "mass_tons": task.mass_tons,
+                "source_node_id": task.source_node_id,
+                "destination_node_id": task.destination_node_id,
+                "distance_km": round(dist, 3),
+                "path": list(route.path),
+            }
+        )
+
+    agent_summary = {
+        agent_id: {
+            "vehicle_type": state.vehicle_type,
+            "tasks": len(state.task_ids),
+            "task_ids": state.task_ids,
+            "total_km": round(state.total_km, 3),
+            "task_km": round(state.task_km, 3),
+            "deadhead_km": round(state.deadhead_km, 3),
+            "total_hours": round(state.total_hours, 3),
+            "drive_hours": round(state.drive_hours, 3),
+            "service_hours": round(state.service_hours, 3),
+        }
+        for agent_id, state in states.items()
+        if state.task_ids
+    }
+
+    return {"routes": route_entries, "agent_summary": agent_summary}
+
+
+def route_order_key(route: Route) -> int:
+    try:
+        return int(route.route_id.split("_")[-1])
+    except Exception:
+        return 10**9
+
+
+def group_routes_by_agent(routes: list[Route]) -> dict[str, list[Route]]:
+    grouped: dict[str, list[Route]] = defaultdict(list)
+    for route in routes:
+        grouped[route.agent_id].append(route)
+    for agent_id in grouped:
+        grouped[agent_id].sort(key=route_order_key)
+    return grouped
+
+
+def constraints_check_summary(
+    solved_dataset_valid: bool,
+    limit_violations: list[dict[str, Any]],
+    reachability: dict[str, Any],
+    unassigned: list[str],
+    mno_coverage: dict[str, Any],
+) -> dict[str, Any]:
+    hard_constraints_ok = solved_dataset_valid
+    daily_limits_ok = len(limit_violations) == 0
+    reachability_ok = (
+        len(reachability.get("unreachable_tasks", [])) == 0
+        and len(reachability.get("unreachable_special_nodes", [])) == 0
+    )
+    all_tasks_assigned = len(unassigned) == 0
+    mno_coverage_ok = bool(mno_coverage.get("all_eligible_mno_covered", False))
+    return {
+        "hard_constraints_ok": hard_constraints_ok,
+        "daily_limits_ok": daily_limits_ok,
+        "reachability_ok": reachability_ok,
+        "all_tasks_assigned": all_tasks_assigned,
+        "mno_coverage_ok": mno_coverage_ok,
+        "all_checks_ok": (
+            hard_constraints_ok
+            and daily_limits_ok
+            and reachability_ok
+            and all_tasks_assigned
+            and mno_coverage_ok
+        ),
+    }
+
+
+def task_source_coverage_summary(routes: list[Route], dataset: RoutingDataset) -> dict[str, Any]:
+    task_by_id = {task.task_id: task for task in dataset.tasks}
+    required_sources = {task.source_node_id for task in dataset.tasks}
+    covered_sources: set[str] = set()
+    covered_task_ids: set[str] = set()
+
+    for route in routes:
+        for task_id in route.task_ids:
+            task = task_by_id[task_id]
+            covered_task_ids.add(task_id)
+            covered_sources.add(task.source_node_id)
+
+    uncovered_sources = sorted(required_sources - covered_sources)
+    uncovered_tasks = sorted(set(task_by_id) - covered_task_ids)
+    return {
+        "total_tasks": len(task_by_id),
+        "covered_tasks": len(covered_task_ids),
+        "all_tasks_covered": len(uncovered_tasks) == 0,
+        "uncovered_task_ids": uncovered_tasks,
+        "total_unique_task_sources": len(required_sources),
+        "covered_unique_task_sources": len(covered_sources),
+        "all_task_sources_covered": len(uncovered_sources) == 0,
+        "uncovered_source_node_ids": uncovered_sources,
+    }
+
+
+def mno_scope_coverage_summary(dataset: RoutingDataset, routes: list[Route]) -> dict[str, Any]:
+    task_by_id = {task.task_id: task for task in dataset.tasks}
+    first_shoulder_task_types = {
+        task.container_type
+        for task in dataset.tasks
+        if dataset.graph.nodes[task.source_node_id].kind == "mno" and task.container_type != "TypeO2P"
+    }
+
+    eligible_mno = {
+        node.node_id
+        for node in dataset.graph.nodes.values()
+        if (
+            node.kind == "mno"
+            and node.daily_mass_tons > 0
+            and bool(set(node.container_types) & first_shoulder_task_types)
+        )
+    }
+    covered_mno: set[str] = set()
+    for route in routes:
+        for task_id in route.task_ids:
+            task = task_by_id[task_id]
+            if dataset.graph.nodes[task.source_node_id].kind == "mno":
+                covered_mno.add(task.source_node_id)
+
+    uncovered = sorted(eligible_mno - covered_mno)
+    out_of_scope = sorted(
+        node.node_id
+        for node in dataset.graph.nodes.values()
+        if node.kind == "mno" and node.node_id not in eligible_mno
+    )
+
+    return {
+        "first_shoulder_task_types": sorted(first_shoulder_task_types),
+        "eligible_mno_count": len(eligible_mno),
+        "covered_eligible_mno_count": len(covered_mno & eligible_mno),
+        "all_eligible_mno_covered": len(uncovered) == 0,
+        "uncovered_eligible_mno_ids": uncovered,
+        "out_of_scope_mno_count": len(out_of_scope),
+        "out_of_scope_mno_ids": out_of_scope,
+    }
+
+
+def depot_activity_summary(dataset: RoutingDataset, states: dict[str, AgentState]) -> dict[str, Any]:
+    depot_ids = sorted([node.node_id for node in dataset.graph.nodes.values() if node.kind == "depot"])
+    active_depots = sorted(
+        {
+            state.depot_node
+            for state in states.values()
+            if state.task_ids and state.depot_node is not None
+        }
+    )
+    inactive_depots = sorted(set(depot_ids) - set(active_depots))
+    return {
+        "total_depots": len(depot_ids),
+        "active_depot_count": len(active_depots),
+        "inactive_depot_count": len(inactive_depots),
+        "active_depot_ids": active_depots,
+        "inactive_depot_ids": inactive_depots,
+    }
+
+
+def render_solution_map(
+    dataset: RoutingDataset,
+    graph: nx.DiGraph,
+    cache: dict[tuple[str, str], tuple[list[str], float] | None],
+    routes: list[Route],
+    states: dict[str, AgentState],
+    output_path: Path,
+) -> None:
+    def offset_polyline(xs: list[float], ys: list[float], offset: float) -> tuple[list[float], list[float]]:
+        if len(xs) < 2 or abs(offset) < 1e-12:
+            return xs, ys
+        out_x: list[float] = []
+        out_y: list[float] = []
+        n = len(xs)
+        for i in range(n):
+            if i == 0:
+                dx = xs[1] - xs[0]
+                dy = ys[1] - ys[0]
+            elif i == n - 1:
+                dx = xs[-1] - xs[-2]
+                dy = ys[-1] - ys[-2]
+            else:
+                dx = xs[i + 1] - xs[i - 1]
+                dy = ys[i + 1] - ys[i - 1]
+            norm = math.hypot(dx, dy)
+            if norm == 0:
+                nx = 0.0
+                ny = 0.0
+            else:
+                nx = -dy / norm
+                ny = dx / norm
+            out_x.append(xs[i] + offset * nx)
+            out_y.append(ys[i] + offset * ny)
+        return out_x, out_y
+
+    def annotate_load_on_segment(
+        xs: list[float],
+        ys: list[float],
+        text: str,
+        color: str,
+        zorder: int,
+    ) -> None:
+        if len(xs) < 2:
+            return
+        mid = len(xs) // 2
+        i0 = max(0, mid - 1)
+        i1 = min(len(xs) - 1, mid + 1)
+        dx = xs[i1] - xs[i0]
+        dy = ys[i1] - ys[i0]
+        norm = math.hypot(dx, dy)
+        if norm == 0:
+            nx = 0.0
+            ny = 0.0
+        else:
+            nx = -dy / norm
+            ny = dx / norm
+        px = xs[mid] + nx * base_offset * 2.2
+        py = ys[mid] + ny * base_offset * 2.2
+        ax.text(
+            px,
+            py,
+            text,
+            fontsize=6.5,
+            color=color,
+            zorder=zorder,
+            bbox={"boxstyle": "round,pad=0.12", "facecolor": "white", "alpha": 0.78, "edgecolor": "none"},
+        )
+
+    fig, ax = plt.subplots(figsize=(14, 10))
+    ax.set_title("Simple Solver: Daily Agent Movements (Line labels = current load, tons)")
+
+    for edge in dataset.graph.edges:
+        source = dataset.graph.nodes[edge.source_id]
+        target = dataset.graph.nodes[edge.target_id]
+        ax.plot(
+            [source.x, target.x],
+            [source.y, target.y],
+            color="#d4d8dc",
+            linewidth=0.4,
+            alpha=0.65,
+            zorder=1,
+        )
+
+    routes_by_agent = group_routes_by_agent(routes)
+    task_by_id = {task.task_id: task for task in dataset.tasks}
+    source_mass_by_node: dict[str, float] = defaultdict(float)
+    for task in dataset.tasks:
+        source_mass_by_node[task.source_node_id] += task.mass_tons
+    cmap = plt.get_cmap("tab20")
+    all_nodes = list(dataset.graph.nodes.values())
+    x_span = max(n.x for n in all_nodes) - min(n.x for n in all_nodes)
+    y_span = max(n.y for n in all_nodes) - min(n.y for n in all_nodes)
+    # Slightly larger shift makes concurrent agent paths visually separable.
+    base_offset = max(min(x_span, y_span) * 0.0023, 1e-5)
+
+    sorted_agents = sorted(routes_by_agent.keys())
+    n_agents = len(sorted_agents)
+    for agent_idx, agent_id in enumerate(sorted_agents):
+        agent_routes = routes_by_agent[agent_id]
+        color = cmap(agent_idx % 20)
+        # Give each active agent its own lateral shift so polylines do not stack on top
+        # of each other when multiple routes share the same road segment.
+        if n_agents <= 1:
+            offset = 0.0
+        else:
+            centered_idx = agent_idx - (n_agents - 1) / 2.0
+            offset = centered_idx * base_offset
+
+        current = states[agent_id].depot_node
+        for route in agent_routes:
+            route_start = route.path[0]
+            route_end = route.path[-1]
+
+            # Deadhead: current -> route source (depot to first source and between tasks).
+            if current is not None and current != route_start:
+                deadhead = shortest_path_cached(graph, cache, current, route_start)
+                if deadhead is not None:
+                    deadhead_nodes, _ = deadhead
+                    dx = [dataset.graph.nodes[node_id].x for node_id in deadhead_nodes]
+                    dy = [dataset.graph.nodes[node_id].y for node_id in deadhead_nodes]
+                    dx, dy = offset_polyline(dx, dy, offset)
+                    ax.plot(
+                        dx,
+                        dy,
+                        color=color,
+                        linewidth=1.35,
+                        alpha=0.55,
+                        linestyle="-",
+                        zorder=2,
+                    )
+                    annotate_load_on_segment(dx, dy, "0t", "#555", zorder=6)
+
+            # Service segment: source -> destination for task.
+            sx = [dataset.graph.nodes[node_id].x for node_id in route.path]
+            sy = [dataset.graph.nodes[node_id].y for node_id in route.path]
+            sx, sy = offset_polyline(sx, sy, offset)
+            ax.plot(
+                sx,
+                sy,
+                color=color,
+                linewidth=2.2,
+                alpha=0.92,
+                zorder=4,
+            )
+            task_mass = sum(task_by_id[task_id].mass_tons for task_id in route.task_ids)
+            annotate_load_on_segment(sx, sy, f"{task_mass:.1f}t", color, zorder=7)
+
+            current = route_end
+
+        # Return deadhead: last destination -> depot.
+        depot_node = states[agent_id].depot_node
+        if current is not None and depot_node is not None and current != depot_node:
+            back = shortest_path_cached(graph, cache, current, depot_node)
+            if back is not None:
+                back_nodes, _ = back
+                bx = [dataset.graph.nodes[node_id].x for node_id in back_nodes]
+                by = [dataset.graph.nodes[node_id].y for node_id in back_nodes]
+                bx, by = offset_polyline(bx, by, offset)
+                ax.plot(
+                    bx,
+                    by,
+                    color=color,
+                    linewidth=1.35,
+                    alpha=0.62,
+                    linestyle="-",
+                    zorder=2,
+                )
+                annotate_load_on_segment(bx, by, "0t", "#555", zorder=6)
+
+    active_states = [state for state in states.values() if state.task_ids]
+    served_task_ids = [task_id for route in routes for task_id in route.task_ids]
+    unique_served_task_ids = set(served_task_ids)
+    task_coverage_pct = 100.0 * len(unique_served_task_ids) / len(dataset.tasks) if dataset.tasks else 100.0
+
+    trip_fill_ratios: list[float] = []
+    trip_unused_tons: list[float] = []
+    total_trip_mass = 0.0
+    total_trip_capacity = 0.0
+    for route in routes:
+        mass = sum(task_by_id[task_id].mass_tons for task_id in route.task_ids)
+        capacity = states[route.agent_id].capacity_tons
+        if capacity > 0:
+            trip_fill_ratios.append(mass / capacity)
+            trip_unused_tons.append(max(capacity - mass, 0.0))
+            total_trip_mass += mass
+            total_trip_capacity += capacity
+
+    avg_fill_pct = 100.0 * sum(trip_fill_ratios) / len(trip_fill_ratios) if trip_fill_ratios else 0.0
+    avg_underfill_pct = max(0.0, 100.0 - avg_fill_pct)
+    weighted_fill_pct = 100.0 * total_trip_mass / total_trip_capacity if total_trip_capacity > 0 else 0.0
+    avg_unused_tons = sum(trip_unused_tons) / len(trip_unused_tons) if trip_unused_tons else 0.0
+
+    km_utilization = (
+        [
+            100.0 * state.total_km / MAX_DAILY_KM_BY_TYPE[state.vehicle_type]
+            for state in active_states
+            if MAX_DAILY_KM_BY_TYPE[state.vehicle_type] > 0
+        ]
+        if active_states
+        else []
+    )
+    hour_utilization = (
+        [
+            100.0 * state.total_hours / MAX_SHIFT_HOURS_BY_TYPE[state.vehicle_type]
+            for state in active_states
+            if MAX_SHIFT_HOURS_BY_TYPE[state.vehicle_type] > 0
+        ]
+        if active_states
+        else []
+    )
+    avg_km_util_pct = sum(km_utilization) / len(km_utilization) if km_utilization else 0.0
+    avg_hour_util_pct = sum(hour_utilization) / len(hour_utilization) if hour_utilization else 0.0
+    total_km = sum(state.total_km for state in active_states)
+    total_deadhead_km = sum(state.deadhead_km for state in active_states)
+    deadhead_share_pct = 100.0 * total_deadhead_km / total_km if total_km > 0 else 0.0
+    avg_tasks_per_active = len(routes) / n_agents if n_agents > 0 else 0.0
+    multi_task_agents = sum(1 for state in active_states if len(state.task_ids) > 1)
+    max_tasks_by_agent = max((len(state.task_ids) for state in active_states), default=0)
+
+    metrics_text = "\n".join(
+        [
+            "Metrics (day):",
+            f"Task coverage: {task_coverage_pct:.1f}% ({len(unique_served_task_ids)}/{len(dataset.tasks)})",
+            f"Avg load per trip: {avg_fill_pct:.1f}% (underfill {avg_underfill_pct:.1f}%)",
+            f"Weighted load per trip: {weighted_fill_pct:.1f}%",
+            f"Avg unused capacity: {avg_unused_tons:.2f} t/trip",
+            f"Avg km utilization: {avg_km_util_pct:.1f}%",
+            f"Avg shift-time utilization: {avg_hour_util_pct:.1f}%",
+            f"Empty-run share: {deadhead_share_pct:.1f}% ({total_deadhead_km:.1f}/{total_km:.1f} km)",
+            f"Active agents: {n_agents}, tasks: {len(routes)}",
+            f"Tasks/agent avg: {avg_tasks_per_active:.2f}, max: {max_tasks_by_agent}, agents>1 task: {multi_task_agents}",
+        ]
+    )
+
+    mno = [n for n in dataset.graph.nodes.values() if n.kind == "mno"]
+    active_depot_agent_count: dict[str, int] = defaultdict(int)
+    for state in states.values():
+        if state.task_ids and state.depot_node is not None:
+            active_depot_agent_count[state.depot_node] += 1
+
+    task_destination_nodes = sorted({task.destination_node_id for task in dataset.tasks})
+    if mno:
+        ax.scatter(
+            [n.x for n in mno],
+            [n.y for n in mno],
+            c="#2b7bba",
+            s=22,
+            alpha=0.9,
+            zorder=6,
+            label="Waste points (MNO)",
+        )
+        for node in mno:
+            mass = source_mass_by_node.get(node.node_id, 0.0)
+            if mass <= 0:
+                continue
+            ax.annotate(
+                f"{mass:.1f}t",
+                (node.x, node.y),
+                fontsize=6.5,
+                color="#0f3553",
+                xytext=(3, 3),
+                textcoords="offset points",
+                zorder=9,
+                bbox={"boxstyle": "round,pad=0.10", "facecolor": "white", "alpha": 0.78, "edgecolor": "none"},
+            )
+    if task_destination_nodes:
+        ax.scatter(
+            [dataset.graph.nodes[node_id].x for node_id in task_destination_nodes],
+            [dataset.graph.nodes[node_id].y for node_id in task_destination_nodes],
+            marker="^",
+            c="#2ca02c",
+            edgecolors="#111",
+            linewidths=0.6,
+            s=170,
+            zorder=8,
+            label="Unload points (Object1)",
+        )
+    active_depot_nodes = [
+        dataset.graph.nodes[node_id]
+        for node_id in active_depot_agent_count
+        if node_id in dataset.graph.nodes
+    ]
+    if active_depot_nodes:
+        ax.scatter(
+            [n.x for n in active_depot_nodes],
+            [n.y for n in active_depot_nodes],
+            c="#000000",
+            marker="*",
+            s=220,
+            zorder=9,
+            label="Start/Return depots",
+        )
+
+    ax.text(
+        0.012,
+        0.988,
+        metrics_text,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=8.2,
+        color="#111",
+        bbox={"boxstyle": "square,pad=0.35", "facecolor": "white", "edgecolor": "#666", "alpha": 0.9},
+        zorder=20,
+    )
+
+    ax.plot([], [], color="#333", linestyle="-", linewidth=2.0, label="Agent trajectories (different colors)")
+    ax.legend(loc="lower left", fontsize=9)
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.grid(alpha=0.12)
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
+
+
+def render_utilization(states: dict[str, AgentState], output_path: Path) -> None:
+    active = [s for s in states.values() if s.task_ids]
+    active.sort(key=lambda s: s.total_km, reverse=True)
+
+    names = [s.agent_id for s in active]
+    km_values = [s.total_km for s in active]
+    km_limits = [MAX_DAILY_KM_BY_TYPE[s.vehicle_type] for s in active]
+    h_values = [s.total_hours for s in active]
+    h_limits = [MAX_SHIFT_HOURS_BY_TYPE[s.vehicle_type] for s in active]
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 9), sharex=True)
+    ax1.bar(names, km_values, color="#4C78A8", alpha=0.85, label="Used km")
+    ax1.plot(names, km_limits, color="#E45756", linewidth=1.5, label="Km limit")
+    ax1.set_ylabel("Kilometers")
+    ax1.set_title("Daily Kilometer Utilization by Agent")
+    ax1.legend()
+    ax1.grid(axis="y", alpha=0.2)
+
+    ax2.bar(names, h_values, color="#72B7B2", alpha=0.85, label="Used hours")
+    ax2.plot(names, h_limits, color="#F58518", linewidth=1.5, label="Shift limit")
+    ax2.set_ylabel("Hours")
+    ax2.set_title("Daily Shift-Time Utilization by Agent")
+    ax2.legend()
+    ax2.grid(axis="y", alpha=0.2)
+
+    ax2.set_xticks(range(len(names)))
+    ax2.set_xticklabels(names, rotation=90, fontsize=7)
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
+
+

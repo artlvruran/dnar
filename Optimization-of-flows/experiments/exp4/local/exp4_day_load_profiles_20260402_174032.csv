@@ -1,0 +1,11 @@
+dataset_tag,target_utilization,algorithm,tasks_total,agents_total,feasible,all_checks_ok,assigned_routes,unassigned_tasks,assignment_coverage_pct,active_agents,transport_work_ton_km,total_km,deadhead_km,deadhead_share_pct,total_hours,runtime_sec,solver_error
+u50,0.5,real_gap_vrp,1587,626,False,False,0,1587,,0,,,,,,180.006,TimeoutError: exceeded timeout 180s
+u50,0.5,real_milp,1587,626,False,False,0,1587,,0,,,,,,180.006,TimeoutError: exceeded timeout 180s
+u50,0.5,real_genetic,1587,626,False,False,0,1587,,0,,,,,,180.004,TimeoutError: exceeded timeout 180s
+u50,0.5,real_stochastic_grasp,1587,626,False,False,512,1075,32.262,282,35384.767,27112.95,133.683,0.493,1326.201,4.792,
+u50,0.5,real_stochastic_rr,1587,626,False,False,509,1078,32.073,283,35157.478,26950.515,132.982,0.493,1317.052,122.239,
+u90,0.9,real_gap_vrp,3737,626,False,False,0,3737,,0,,,,,,180.004,TimeoutError: exceeded timeout 180s
+u90,0.9,real_milp,3737,626,False,False,0,3737,,0,,,,,,180.004,TimeoutError: exceeded timeout 180s
+u90,0.9,real_genetic,3737,626,False,False,0,3737,,0,,,,,,180.009,TimeoutError: exceeded timeout 180s
+u90,0.9,real_stochastic_grasp,3737,626,False,False,1243,2494,33.262,315,54095.656,35498.636,198.897,0.56,1919.873,6.183,
+u90,0.9,real_stochastic_rr,3737,626,False,False,1249,2488,33.423,313,53894.216,35522.819,200.494,0.564,1922.112,122.943,

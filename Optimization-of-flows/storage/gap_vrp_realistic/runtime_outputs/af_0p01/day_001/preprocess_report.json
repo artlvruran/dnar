@@ -1,0 +1,24 @@
+{
+  "dataset": "/Users/igoreshka/Desktop/GarbageOpt/data/realistic_spb_real_notebook_data/data/dataset_real_spb_af_0p01.json",
+  "counts": {
+    "nodes": 46730,
+    "edges": 127100,
+    "agents": 6,
+    "tasks": 220
+  },
+  "reachability": {
+    "weakly_connected_components": 1,
+    "largest_weak_component_size": 46730,
+    "strongly_connected_components": 1,
+    "largest_strong_component_size": 46730,
+    "unreachable_tasks": [],
+    "unreachable_special_nodes": []
+  },
+  "compatibility": {
+    "tasks_without_path": [],
+    "tasks_without_compatible_agents": [],
+    "all_tasks_have_path": true,
+    "all_tasks_have_compatible_agents": true
+  },
+  "preprocess_ok": true
+}

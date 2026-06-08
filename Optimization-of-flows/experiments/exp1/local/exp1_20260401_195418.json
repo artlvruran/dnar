@@ -1,0 +1,76 @@
+{
+  "created_at": "2026-04-01T19:54:18",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/real_simple/dataset_real_spb_simple.json",
+  "algorithms": [
+    "real_stochastic_grasp",
+    "real_stochastic_rr"
+  ],
+  "timeout_sec": 40,
+  "budget_sec": 20,
+  "results": [
+    {
+      "algorithm": "real_stochastic_grasp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/real_simple/dataset_real_spb_simple.json",
+      "feasible": true,
+      "all_checks_ok": true,
+      "assigned_routes": 32,
+      "unassigned_tasks": 0,
+      "active_agents": 17,
+      "transport_work_ton_km": 48.203,
+      "total_km": 186.963,
+      "deadhead_km": 1.843,
+      "deadhead_share_pct": 0.986,
+      "total_hours": 15.66,
+      "runtime_sec": 1.537,
+      "checks": {
+        "hard_constraints_ok": true,
+        "daily_limits_ok": true,
+        "reachability_ok": true,
+        "all_tasks_assigned": true,
+        "mno_coverage_ok": true,
+        "all_checks_ok": true
+      },
+      "time_budget_sec": 20,
+      "max_starts": 2,
+      "candidate_k": 12,
+      "rcl_size": 4,
+      "load_penalty": 8.0,
+      "road_factor": 1.25,
+      "trip_share": 0.35,
+      "overload_slack": 1.02,
+      "seed": 42
+    },
+    {
+      "algorithm": "real_stochastic_rr",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/real_simple/dataset_real_spb_simple.json",
+      "feasible": true,
+      "all_checks_ok": true,
+      "assigned_routes": 32,
+      "unassigned_tasks": 0,
+      "active_agents": 18,
+      "transport_work_ton_km": 48.203,
+      "total_km": 186.963,
+      "deadhead_km": 1.843,
+      "deadhead_share_pct": 0.986,
+      "total_hours": 15.66,
+      "runtime_sec": 21.372,
+      "checks": {
+        "hard_constraints_ok": true,
+        "daily_limits_ok": true,
+        "reachability_ok": true,
+        "all_tasks_assigned": true,
+        "mno_coverage_ok": true,
+        "all_checks_ok": true
+      },
+      "time_budget_sec": 20,
+      "candidate_k": 12,
+      "rcl_size": 4,
+      "batch_size": 200,
+      "load_penalty": 8.0,
+      "road_factor": 1.25,
+      "trip_share": 0.35,
+      "overload_slack": 1.02,
+      "seed": 42
+    }
+  ]
+}

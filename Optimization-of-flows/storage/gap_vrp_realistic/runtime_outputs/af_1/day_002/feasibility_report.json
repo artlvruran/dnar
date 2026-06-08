@@ -1,0 +1,1609 @@
+{
+  "solver_status": "feasible",
+  "dataset": "/Users/igoreshka/Desktop/GarbageOpt/data/realistic_spb_real_notebook_data/data/dataset_real_spb_af_1.json",
+  "pipeline": "real_data_notebook_pack_min_solver",
+  "preprocess_report_file": "preprocess_report.json",
+  "preprocess_ok": true,
+  "constraints_check_summary": {
+    "hard_constraints_ok": true,
+    "daily_limits_ok": true,
+    "reachability_ok": true,
+    "all_tasks_assigned": true,
+    "mno_coverage_ok": true,
+    "all_checks_ok": true
+  },
+  "assumptions": {
+    "max_daily_km_by_type": {
+      "Type1": 130.0,
+      "Type2": 140.0,
+      "Type1-2": 95.0,
+      "Type3": 140.0,
+      "Type4": 120.0,
+      "TypeRNO": 110.0,
+      "TypeO2P": 200.0,
+      "VT_A": 280.0,
+      "VT_AB": 320.0,
+      "VT_ABD": 320.0,
+      "VT_AD": 280.0,
+      "VT_C": 320.0,
+      "VT_CD": 280.0
+    },
+    "max_shift_hours_by_type": {
+      "Type1": 10.0,
+      "Type2": 10.0,
+      "Type1-2": 9.0,
+      "Type3": 10.0,
+      "Type4": 10.0,
+      "TypeRNO": 9.5,
+      "TypeO2P": 11.0,
+      "VT_A": 14.0,
+      "VT_AB": 14.0,
+      "VT_ABD": 14.0,
+      "VT_AD": 14.0,
+      "VT_C": 14.0,
+      "VT_CD": 14.0
+    },
+    "avg_speed_kmph_by_type": {
+      "Type1": 24.0,
+      "Type2": 24.0,
+      "Type1-2": 22.0,
+      "Type3": 22.0,
+      "Type4": 21.0,
+      "TypeRNO": 23.0,
+      "TypeO2P": 28.0,
+      "VT_A": 26.0,
+      "VT_AB": 24.0,
+      "VT_ABD": 24.0,
+      "VT_AD": 26.0,
+      "VT_C": 24.0,
+      "VT_CD": 26.0
+    },
+    "service_hours_by_container": {
+      "Type1": 0.22,
+      "Type2": 0.24,
+      "Type3": 0.35,
+      "Type4": 0.32,
+      "TypeRNO": 0.28,
+      "TypeO2P": 0.3,
+      "A": 0.22,
+      "B": 0.3,
+      "C": 0.35,
+      "D": 0.24
+    }
+  },
+  "reachability": {
+    "weakly_connected_components": 1,
+    "largest_weak_component_size": 46730,
+    "strongly_connected_components": 1,
+    "largest_strong_component_size": 46730,
+    "unreachable_tasks": [],
+    "unreachable_special_nodes": []
+  },
+  "assigned_routes": 220,
+  "assigned_tasks": 220,
+  "unassigned_tasks": [],
+  "task_source_coverage": {
+    "total_tasks": 220,
+    "covered_tasks": 220,
+    "all_tasks_covered": true,
+    "uncovered_task_ids": [],
+    "total_unique_task_sources": 216,
+    "covered_unique_task_sources": 216,
+    "all_task_sources_covered": true,
+    "uncovered_source_node_ids": []
+  },
+  "mno_scope_coverage": {
+    "first_shoulder_task_types": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "eligible_mno_count": 216,
+    "covered_eligible_mno_count": 216,
+    "all_eligible_mno_covered": true,
+    "uncovered_eligible_mno_ids": [],
+    "out_of_scope_mno_count": 0,
+    "out_of_scope_mno_ids": []
+  },
+  "depot_activity": {
+    "total_depots": 4,
+    "active_depot_count": 4,
+    "inactive_depot_count": 0,
+    "active_depot_ids": [
+      "10579045023",
+      "1285880475",
+      "1398004896",
+      "1929818861"
+    ],
+    "inactive_depot_ids": []
+  },
+  "limit_violations": [],
+  "transport_work_ton_km": 684.561,
+  "transport_work_by_shoulder_ton_km": {
+    "first_shoulder_ton_km": 684.561,
+    "second_shoulder_ton_km": 0.0
+  },
+  "active_agents": 173,
+  "object_capacity_summary": {
+    "objects": [
+      {
+        "object_id": "253734226",
+        "kind": "object1",
+        "day_load_tons": 9.499,
+        "day_capacity_tons": 273.973,
+        "day_capacity_ok": true,
+        "day_utilization": 0.035,
+        "year_capacity_tons": 87671.233,
+        "theoretical_days_at_current_daily_load": 9229.5
+      },
+      {
+        "object_id": "271463269",
+        "kind": "object1",
+        "day_load_tons": 3.146,
+        "day_capacity_tons": 1643.836,
+        "day_capacity_ok": true,
+        "day_utilization": 0.002,
+        "year_capacity_tons": 526027.397,
+        "theoretical_days_at_current_daily_load": 167205.1
+      },
+      {
+        "object_id": "1743205915",
+        "kind": "object1",
+        "day_load_tons": 14.53,
+        "day_capacity_tons": 273.973,
+        "day_capacity_ok": true,
+        "day_utilization": 0.053,
+        "year_capacity_tons": 87671.233,
+        "theoretical_days_at_current_daily_load": 6033.8
+      },
+      {
+        "object_id": "1817003027",
+        "kind": "object1",
+        "day_load_tons": 3.937,
+        "day_capacity_tons": 109.589,
+        "day_capacity_ok": true,
+        "day_utilization": 0.036,
+        "year_capacity_tons": 35068.493,
+        "theoretical_days_at_current_daily_load": 8907.4
+      },
+      {
+        "object_id": "2678538397",
+        "kind": "object1",
+        "day_load_tons": 14.735,
+        "day_capacity_tons": 821.918,
+        "day_capacity_ok": true,
+        "day_utilization": 0.018,
+        "year_capacity_tons": 263013.699,
+        "theoretical_days_at_current_daily_load": 17849.6
+      },
+      {
+        "object_id": "3647825377",
+        "kind": "object1",
+        "day_load_tons": 4.899,
+        "day_capacity_tons": 109.589,
+        "day_capacity_ok": true,
+        "day_utilization": 0.045,
+        "year_capacity_tons": 35068.493,
+        "theoretical_days_at_current_daily_load": 7158.3
+      },
+      {
+        "object_id": "1910665716",
+        "kind": "object1",
+        "day_load_tons": 17.659,
+        "day_capacity_tons": 273.973,
+        "day_capacity_ok": true,
+        "day_utilization": 0.064,
+        "year_capacity_tons": 87671.233,
+        "theoretical_days_at_current_daily_load": 4964.7
+      },
+      {
+        "object_id": "1339626840",
+        "kind": "object1",
+        "day_load_tons": 3.089,
+        "day_capacity_tons": 273.973,
+        "day_capacity_ok": true,
+        "day_utilization": 0.011,
+        "year_capacity_tons": 87671.233,
+        "theoretical_days_at_current_daily_load": 28381.8
+      },
+      {
+        "object_id": "60204809",
+        "kind": "object1",
+        "day_load_tons": 0.794,
+        "day_capacity_tons": 1643.836,
+        "day_capacity_ok": true,
+        "day_utilization": 0.0,
+        "year_capacity_tons": 526027.397,
+        "theoretical_days_at_current_daily_load": 662503.0
+      }
+    ]
+  },
+  "solve_error": null,
+  "agent_summary": {
+    "AGENT_00020": {
+      "vehicle_type": "VT_A",
+      "tasks": 1,
+      "total_km": 28.827,
+      "km_limit": 280.0,
+      "total_hours": 1.329,
+      "hour_limit": 14.0
+    },
+    "AGENT_00030": {
+      "vehicle_type": "VT_A",
+      "tasks": 1,
+      "total_km": 39.104,
+      "km_limit": 280.0,
+      "total_hours": 1.724,
+      "hour_limit": 14.0
+    },
+    "AGENT_00048": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.369,
+      "km_limit": 320.0,
+      "total_hours": 1.44,
+      "hour_limit": 14.0
+    },
+    "AGENT_00050": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 32.33,
+      "km_limit": 320.0,
+      "total_hours": 1.647,
+      "hour_limit": 14.0
+    },
+    "AGENT_00051": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 32.232,
+      "km_limit": 320.0,
+      "total_hours": 1.643,
+      "hour_limit": 14.0
+    },
+    "AGENT_00052": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.442,
+      "km_limit": 320.0,
+      "total_hours": 1.402,
+      "hour_limit": 14.0
+    },
+    "AGENT_00053": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.699,
+      "km_limit": 320.0,
+      "total_hours": 1.374,
+      "hour_limit": 14.0
+    },
+    "AGENT_00054": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 37.987,
+      "km_limit": 320.0,
+      "total_hours": 1.803,
+      "hour_limit": 14.0
+    },
+    "AGENT_00055": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 25.637,
+      "km_limit": 320.0,
+      "total_hours": 1.368,
+      "hour_limit": 14.0
+    },
+    "AGENT_00056": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 34.227,
+      "km_limit": 320.0,
+      "total_hours": 1.646,
+      "hour_limit": 14.0
+    },
+    "AGENT_00057": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 32.959,
+      "km_limit": 320.0,
+      "total_hours": 1.593,
+      "hour_limit": 14.0
+    },
+    "AGENT_00058": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.73,
+      "km_limit": 320.0,
+      "total_hours": 1.5,
+      "hour_limit": 14.0
+    },
+    "AGENT_00059": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.715,
+      "km_limit": 320.0,
+      "total_hours": 1.413,
+      "hour_limit": 14.0
+    },
+    "AGENT_00060": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 28.502,
+      "km_limit": 320.0,
+      "total_hours": 1.408,
+      "hour_limit": 14.0
+    },
+    "AGENT_00061": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.946,
+      "km_limit": 320.0,
+      "total_hours": 1.384,
+      "hour_limit": 14.0
+    },
+    "AGENT_00063": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.669,
+      "km_limit": 320.0,
+      "total_hours": 1.578,
+      "hour_limit": 14.0
+    },
+    "AGENT_00064": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 34.896,
+      "km_limit": 320.0,
+      "total_hours": 1.754,
+      "hour_limit": 14.0
+    },
+    "AGENT_00065": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 29.529,
+      "km_limit": 320.0,
+      "total_hours": 1.45,
+      "hour_limit": 14.0
+    },
+    "AGENT_00066": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.442,
+      "km_limit": 320.0,
+      "total_hours": 1.322,
+      "hour_limit": 14.0
+    },
+    "AGENT_00067": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 33.682,
+      "km_limit": 320.0,
+      "total_hours": 1.623,
+      "hour_limit": 14.0
+    },
+    "AGENT_00068": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.657,
+      "km_limit": 320.0,
+      "total_hours": 1.372,
+      "hour_limit": 14.0
+    },
+    "AGENT_00069": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.026,
+      "km_limit": 320.0,
+      "total_hours": 1.346,
+      "hour_limit": 14.0
+    },
+    "AGENT_00070": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 25.763,
+      "km_limit": 320.0,
+      "total_hours": 1.293,
+      "hour_limit": 14.0
+    },
+    "AGENT_00071": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 31.494,
+      "km_limit": 320.0,
+      "total_hours": 1.532,
+      "hour_limit": 14.0
+    },
+    "AGENT_00072": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 36.078,
+      "km_limit": 320.0,
+      "total_hours": 1.723,
+      "hour_limit": 14.0
+    },
+    "AGENT_00073": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.143,
+      "km_limit": 320.0,
+      "total_hours": 1.309,
+      "hour_limit": 14.0
+    },
+    "AGENT_00074": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 28.466,
+      "km_limit": 320.0,
+      "total_hours": 1.406,
+      "hour_limit": 14.0
+    },
+    "AGENT_00075": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 44.244,
+      "km_limit": 320.0,
+      "total_hours": 2.063,
+      "hour_limit": 14.0
+    },
+    "AGENT_00076": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.026,
+      "km_limit": 320.0,
+      "total_hours": 1.346,
+      "hour_limit": 14.0
+    },
+    "AGENT_00077": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.004,
+      "km_limit": 320.0,
+      "total_hours": 1.47,
+      "hour_limit": 14.0
+    },
+    "AGENT_00078": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.437,
+      "km_limit": 320.0,
+      "total_hours": 1.322,
+      "hour_limit": 14.0
+    },
+    "AGENT_00079": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 29.26,
+      "km_limit": 320.0,
+      "total_hours": 1.439,
+      "hour_limit": 14.0
+    },
+    "AGENT_00080": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 26.445,
+      "km_limit": 320.0,
+      "total_hours": 1.322,
+      "hour_limit": 14.0
+    },
+    "AGENT_00081": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 28.795,
+      "km_limit": 320.0,
+      "total_hours": 1.42,
+      "hour_limit": 14.0
+    },
+    "AGENT_00082": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.266,
+      "km_limit": 320.0,
+      "total_hours": 1.356,
+      "hour_limit": 14.0
+    },
+    "AGENT_00083": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 36.907,
+      "km_limit": 320.0,
+      "total_hours": 1.758,
+      "hour_limit": 14.0
+    },
+    "AGENT_00084": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 41.46,
+      "km_limit": 320.0,
+      "total_hours": 1.948,
+      "hour_limit": 14.0
+    },
+    "AGENT_00085": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 38.799,
+      "km_limit": 320.0,
+      "total_hours": 1.837,
+      "hour_limit": 14.0
+    },
+    "AGENT_00086": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 43.754,
+      "km_limit": 320.0,
+      "total_hours": 2.043,
+      "hour_limit": 14.0
+    },
+    "AGENT_00087": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.09,
+      "km_limit": 320.0,
+      "total_hours": 1.349,
+      "hour_limit": 14.0
+    },
+    "AGENT_00088": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 31.901,
+      "km_limit": 320.0,
+      "total_hours": 1.549,
+      "hour_limit": 14.0
+    },
+    "AGENT_00090": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 37.602,
+      "km_limit": 320.0,
+      "total_hours": 1.787,
+      "hour_limit": 14.0
+    },
+    "AGENT_00091": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.148,
+      "km_limit": 320.0,
+      "total_hours": 1.351,
+      "hour_limit": 14.0
+    },
+    "AGENT_00092": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.268,
+      "km_limit": 320.0,
+      "total_hours": 1.356,
+      "hour_limit": 14.0
+    },
+    "AGENT_00093": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.824,
+      "km_limit": 320.0,
+      "total_hours": 1.379,
+      "hour_limit": 14.0
+    },
+    "AGENT_00094": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 31.622,
+      "km_limit": 320.0,
+      "total_hours": 1.538,
+      "hour_limit": 14.0
+    },
+    "AGENT_00095": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.62,
+      "km_limit": 320.0,
+      "total_hours": 1.371,
+      "hour_limit": 14.0
+    },
+    "AGENT_00096": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 47.523,
+      "km_limit": 320.0,
+      "total_hours": 2.2,
+      "hour_limit": 14.0
+    },
+    "AGENT_00097": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.458,
+      "km_limit": 320.0,
+      "total_hours": 1.489,
+      "hour_limit": 14.0
+    },
+    "AGENT_00099": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 31.09,
+      "km_limit": 320.0,
+      "total_hours": 1.515,
+      "hour_limit": 14.0
+    },
+    "AGENT_00100": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.032,
+      "km_limit": 320.0,
+      "total_hours": 1.346,
+      "hour_limit": 14.0
+    },
+    "AGENT_00101": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.894,
+      "km_limit": 320.0,
+      "total_hours": 1.507,
+      "hour_limit": 14.0
+    },
+    "AGENT_00102": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 46.65,
+      "km_limit": 320.0,
+      "total_hours": 2.164,
+      "hour_limit": 14.0
+    },
+    "AGENT_00103": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.657,
+      "km_limit": 320.0,
+      "total_hours": 1.372,
+      "hour_limit": 14.0
+    },
+    "AGENT_00104": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 28.48,
+      "km_limit": 320.0,
+      "total_hours": 1.407,
+      "hour_limit": 14.0
+    },
+    "AGENT_00105": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 40.023,
+      "km_limit": 320.0,
+      "total_hours": 1.888,
+      "hour_limit": 14.0
+    },
+    "AGENT_00106": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 38.47,
+      "km_limit": 320.0,
+      "total_hours": 1.823,
+      "hour_limit": 14.0
+    },
+    "AGENT_00107": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 43.016,
+      "km_limit": 320.0,
+      "total_hours": 2.012,
+      "hour_limit": 14.0
+    },
+    "AGENT_00108": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 37.987,
+      "km_limit": 320.0,
+      "total_hours": 1.803,
+      "hour_limit": 14.0
+    },
+    "AGENT_00158": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 26.402,
+      "km_limit": 320.0,
+      "total_hours": 1.45,
+      "hour_limit": 14.0
+    },
+    "AGENT_00249": {
+      "vehicle_type": "VT_A",
+      "tasks": 2,
+      "total_km": 70.913,
+      "km_limit": 280.0,
+      "total_hours": 3.167,
+      "hour_limit": 14.0
+    },
+    "AGENT_00250": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 21.449,
+      "km_limit": 320.0,
+      "total_hours": 1.414,
+      "hour_limit": 14.0
+    },
+    "AGENT_00251": {
+      "vehicle_type": "VT_AB",
+      "tasks": 3,
+      "total_km": 33.992,
+      "km_limit": 320.0,
+      "total_hours": 2.156,
+      "hour_limit": 14.0
+    },
+    "AGENT_00252": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 25.192,
+      "km_limit": 320.0,
+      "total_hours": 1.49,
+      "hour_limit": 14.0
+    },
+    "AGENT_00253": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 24.788,
+      "km_limit": 320.0,
+      "total_hours": 1.553,
+      "hour_limit": 14.0
+    },
+    "AGENT_00254": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 38.748,
+      "km_limit": 320.0,
+      "total_hours": 1.914,
+      "hour_limit": 14.0
+    },
+    "AGENT_00255": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 50.041,
+      "km_limit": 320.0,
+      "total_hours": 2.305,
+      "hour_limit": 14.0
+    },
+    "AGENT_00256": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 35.052,
+      "km_limit": 320.0,
+      "total_hours": 1.761,
+      "hour_limit": 14.0
+    },
+    "AGENT_00257": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 39.91,
+      "km_limit": 320.0,
+      "total_hours": 1.963,
+      "hour_limit": 14.0
+    },
+    "AGENT_00258": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 42.417,
+      "km_limit": 320.0,
+      "total_hours": 1.987,
+      "hour_limit": 14.0
+    },
+    "AGENT_00259": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 33.245,
+      "km_limit": 320.0,
+      "total_hours": 1.685,
+      "hour_limit": 14.0
+    },
+    "AGENT_00262": {
+      "vehicle_type": "VT_AB",
+      "tasks": 3,
+      "total_km": 42.275,
+      "km_limit": 320.0,
+      "total_hours": 2.501,
+      "hour_limit": 14.0
+    },
+    "AGENT_00263": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 37.752,
+      "km_limit": 320.0,
+      "total_hours": 1.873,
+      "hour_limit": 14.0
+    },
+    "AGENT_00264": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 33.241,
+      "km_limit": 320.0,
+      "total_hours": 1.905,
+      "hour_limit": 14.0
+    },
+    "AGENT_00266": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 36.415,
+      "km_limit": 320.0,
+      "total_hours": 1.737,
+      "hour_limit": 14.0
+    },
+    "AGENT_00267": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 33.677,
+      "km_limit": 320.0,
+      "total_hours": 1.703,
+      "hour_limit": 14.0
+    },
+    "AGENT_00268": {
+      "vehicle_type": "VT_AB",
+      "tasks": 3,
+      "total_km": 64.72,
+      "km_limit": 320.0,
+      "total_hours": 3.437,
+      "hour_limit": 14.0
+    },
+    "AGENT_00270": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 36.389,
+      "km_limit": 320.0,
+      "total_hours": 1.816,
+      "hour_limit": 14.0
+    },
+    "AGENT_00273": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 34.274,
+      "km_limit": 320.0,
+      "total_hours": 1.868,
+      "hour_limit": 14.0
+    },
+    "AGENT_00274": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 40.699,
+      "km_limit": 320.0,
+      "total_hours": 2.136,
+      "hour_limit": 14.0
+    },
+    "AGENT_00275": {
+      "vehicle_type": "VT_AB",
+      "tasks": 3,
+      "total_km": 26.515,
+      "km_limit": 320.0,
+      "total_hours": 1.765,
+      "hour_limit": 14.0
+    },
+    "AGENT_00277": {
+      "vehicle_type": "VT_AD",
+      "tasks": 2,
+      "total_km": 56.213,
+      "km_limit": 280.0,
+      "total_hours": 2.642,
+      "hour_limit": 14.0
+    },
+    "AGENT_00281": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 28.144,
+      "km_limit": 320.0,
+      "total_hours": 1.523,
+      "hour_limit": 14.0
+    },
+    "AGENT_00282": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 28.815,
+      "km_limit": 320.0,
+      "total_hours": 1.551,
+      "hour_limit": 14.0
+    },
+    "AGENT_00284": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 42.087,
+      "km_limit": 320.0,
+      "total_hours": 2.104,
+      "hour_limit": 14.0
+    },
+    "AGENT_00285": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 18.939,
+      "km_limit": 320.0,
+      "total_hours": 1.139,
+      "hour_limit": 14.0
+    },
+    "AGENT_00288": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 15.382,
+      "km_limit": 320.0,
+      "total_hours": 0.991,
+      "hour_limit": 14.0
+    },
+    "AGENT_00289": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 26.851,
+      "km_limit": 320.0,
+      "total_hours": 1.469,
+      "hour_limit": 14.0
+    },
+    "AGENT_00290": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 50.259,
+      "km_limit": 320.0,
+      "total_hours": 2.444,
+      "hour_limit": 14.0
+    },
+    "AGENT_00295": {
+      "vehicle_type": "VT_A",
+      "tasks": 1,
+      "total_km": 34.568,
+      "km_limit": 280.0,
+      "total_hours": 1.55,
+      "hour_limit": 14.0
+    },
+    "AGENT_00300": {
+      "vehicle_type": "VT_A",
+      "tasks": 1,
+      "total_km": 50.721,
+      "km_limit": 280.0,
+      "total_hours": 2.171,
+      "hour_limit": 14.0
+    },
+    "AGENT_00307": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 41.01,
+      "km_limit": 320.0,
+      "total_hours": 1.929,
+      "hour_limit": 14.0
+    },
+    "AGENT_00308": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 36.702,
+      "km_limit": 320.0,
+      "total_hours": 2.049,
+      "hour_limit": 14.0
+    },
+    "AGENT_00311": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.388,
+      "km_limit": 320.0,
+      "total_hours": 1.441,
+      "hour_limit": 14.0
+    },
+    "AGENT_00312": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 34.175,
+      "km_limit": 320.0,
+      "total_hours": 1.864,
+      "hour_limit": 14.0
+    },
+    "AGENT_00313": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 33.776,
+      "km_limit": 320.0,
+      "total_hours": 1.847,
+      "hour_limit": 14.0
+    },
+    "AGENT_00314": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 32.875,
+      "km_limit": 320.0,
+      "total_hours": 1.59,
+      "hour_limit": 14.0
+    },
+    "AGENT_00315": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 36.738,
+      "km_limit": 320.0,
+      "total_hours": 1.971,
+      "hour_limit": 14.0
+    },
+    "AGENT_00316": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 27.607,
+      "km_limit": 320.0,
+      "total_hours": 1.37,
+      "hour_limit": 14.0
+    },
+    "AGENT_00317": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 30.828,
+      "km_limit": 320.0,
+      "total_hours": 1.504,
+      "hour_limit": 14.0
+    },
+    "AGENT_00318": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 61.544,
+      "km_limit": 320.0,
+      "total_hours": 2.784,
+      "hour_limit": 14.0
+    },
+    "AGENT_00319": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 28.901,
+      "km_limit": 320.0,
+      "total_hours": 1.644,
+      "hour_limit": 14.0
+    },
+    "AGENT_00320": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 49.135,
+      "km_limit": 320.0,
+      "total_hours": 2.267,
+      "hour_limit": 14.0
+    },
+    "AGENT_00321": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 39.472,
+      "km_limit": 320.0,
+      "total_hours": 2.085,
+      "hour_limit": 14.0
+    },
+    "AGENT_00322": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 44.078,
+      "km_limit": 320.0,
+      "total_hours": 2.277,
+      "hour_limit": 14.0
+    },
+    "AGENT_00323": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 30.643,
+      "km_limit": 320.0,
+      "total_hours": 1.717,
+      "hour_limit": 14.0
+    },
+    "AGENT_00325": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 51.816,
+      "km_limit": 320.0,
+      "total_hours": 2.379,
+      "hour_limit": 14.0
+    },
+    "AGENT_00326": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 42.659,
+      "km_limit": 320.0,
+      "total_hours": 2.217,
+      "hour_limit": 14.0
+    },
+    "AGENT_00327": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 50.773,
+      "km_limit": 320.0,
+      "total_hours": 2.336,
+      "hour_limit": 14.0
+    },
+    "AGENT_00328": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 51.67,
+      "km_limit": 320.0,
+      "total_hours": 2.373,
+      "hour_limit": 14.0
+    },
+    "AGENT_00329": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 50.46,
+      "km_limit": 320.0,
+      "total_hours": 2.322,
+      "hour_limit": 14.0
+    },
+    "AGENT_00330": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 41.001,
+      "km_limit": 320.0,
+      "total_hours": 1.928,
+      "hour_limit": 14.0
+    },
+    "AGENT_00331": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 42.112,
+      "km_limit": 320.0,
+      "total_hours": 1.975,
+      "hour_limit": 14.0
+    },
+    "AGENT_00332": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 40.903,
+      "km_limit": 320.0,
+      "total_hours": 1.924,
+      "hour_limit": 14.0
+    },
+    "AGENT_00333": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 32.995,
+      "km_limit": 320.0,
+      "total_hours": 1.895,
+      "hour_limit": 14.0
+    },
+    "AGENT_00334": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 34.318,
+      "km_limit": 320.0,
+      "total_hours": 1.87,
+      "hour_limit": 14.0
+    },
+    "AGENT_00335": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 44.53,
+      "km_limit": 320.0,
+      "total_hours": 2.075,
+      "hour_limit": 14.0
+    },
+    "AGENT_00336": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 51.841,
+      "km_limit": 320.0,
+      "total_hours": 2.38,
+      "hour_limit": 14.0
+    },
+    "AGENT_00337": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 40.481,
+      "km_limit": 320.0,
+      "total_hours": 1.907,
+      "hour_limit": 14.0
+    },
+    "AGENT_00338": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 50.875,
+      "km_limit": 320.0,
+      "total_hours": 2.34,
+      "hour_limit": 14.0
+    },
+    "AGENT_00339": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 34.97,
+      "km_limit": 320.0,
+      "total_hours": 1.677,
+      "hour_limit": 14.0
+    },
+    "AGENT_00340": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 38.825,
+      "km_limit": 320.0,
+      "total_hours": 1.838,
+      "hour_limit": 14.0
+    },
+    "AGENT_00341": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 59.676,
+      "km_limit": 320.0,
+      "total_hours": 2.926,
+      "hour_limit": 14.0
+    },
+    "AGENT_00342": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 36.823,
+      "km_limit": 320.0,
+      "total_hours": 1.754,
+      "hour_limit": 14.0
+    },
+    "AGENT_00343": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 67.487,
+      "km_limit": 320.0,
+      "total_hours": 3.252,
+      "hour_limit": 14.0
+    },
+    "AGENT_00344": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 35.732,
+      "km_limit": 320.0,
+      "total_hours": 1.709,
+      "hour_limit": 14.0
+    },
+    "AGENT_00345": {
+      "vehicle_type": "VT_AB",
+      "tasks": 2,
+      "total_km": 40.639,
+      "km_limit": 320.0,
+      "total_hours": 2.133,
+      "hour_limit": 14.0
+    },
+    "AGENT_00346": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 16.25,
+      "km_limit": 320.0,
+      "total_hours": 1.027,
+      "hour_limit": 14.0
+    },
+    "AGENT_00347": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 40.415,
+      "km_limit": 320.0,
+      "total_hours": 2.034,
+      "hour_limit": 14.0
+    },
+    "AGENT_00348": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 20.435,
+      "km_limit": 320.0,
+      "total_hours": 1.201,
+      "hour_limit": 14.0
+    },
+    "AGENT_00349": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 46.241,
+      "km_limit": 320.0,
+      "total_hours": 2.277,
+      "hour_limit": 14.0
+    },
+    "AGENT_00350": {
+      "vehicle_type": "VT_C",
+      "tasks": 1,
+      "total_km": 39.077,
+      "km_limit": 320.0,
+      "total_hours": 1.978,
+      "hour_limit": 14.0
+    },
+    "AGENT_00421": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 86.756,
+      "km_limit": 320.0,
+      "total_hours": 3.835,
+      "hour_limit": 14.0
+    },
+    "AGENT_00422": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 85.79,
+      "km_limit": 320.0,
+      "total_hours": 3.795,
+      "hour_limit": 14.0
+    },
+    "AGENT_00423": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 86.499,
+      "km_limit": 320.0,
+      "total_hours": 3.824,
+      "hour_limit": 14.0
+    },
+    "AGENT_00424": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 94.028,
+      "km_limit": 320.0,
+      "total_hours": 4.138,
+      "hour_limit": 14.0
+    },
+    "AGENT_00427": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 80.891,
+      "km_limit": 320.0,
+      "total_hours": 3.59,
+      "hour_limit": 14.0
+    },
+    "AGENT_00428": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 93.431,
+      "km_limit": 320.0,
+      "total_hours": 4.113,
+      "hour_limit": 14.0
+    },
+    "AGENT_00429": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 127.281,
+      "km_limit": 320.0,
+      "total_hours": 5.523,
+      "hour_limit": 14.0
+    },
+    "AGENT_00430": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 116.729,
+      "km_limit": 320.0,
+      "total_hours": 5.084,
+      "hour_limit": 14.0
+    },
+    "AGENT_00431": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 90.251,
+      "km_limit": 320.0,
+      "total_hours": 3.98,
+      "hour_limit": 14.0
+    },
+    "AGENT_00433": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 116.804,
+      "km_limit": 320.0,
+      "total_hours": 5.087,
+      "hour_limit": 14.0
+    },
+    "AGENT_00435": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 91.11,
+      "km_limit": 320.0,
+      "total_hours": 4.016,
+      "hour_limit": 14.0
+    },
+    "AGENT_00436": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 91.11,
+      "km_limit": 320.0,
+      "total_hours": 4.016,
+      "hour_limit": 14.0
+    },
+    "AGENT_00438": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 111.232,
+      "km_limit": 320.0,
+      "total_hours": 4.855,
+      "hour_limit": 14.0
+    },
+    "AGENT_00443": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 87.967,
+      "km_limit": 320.0,
+      "total_hours": 3.885,
+      "hour_limit": 14.0
+    },
+    "AGENT_00446": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 83.504,
+      "km_limit": 320.0,
+      "total_hours": 3.699,
+      "hour_limit": 14.0
+    },
+    "AGENT_00454": {
+      "vehicle_type": "VT_AB",
+      "tasks": 1,
+      "total_km": 92.056,
+      "km_limit": 320.0,
+      "total_hours": 4.056,
+      "hour_limit": 14.0
+    },
+    "AGENT_00514": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 85.619,
+      "km_limit": 320.0,
+      "total_hours": 3.807,
+      "hour_limit": 14.0
+    },
+    "AGENT_00515": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 61.797,
+      "km_limit": 320.0,
+      "total_hours": 2.815,
+      "hour_limit": 14.0
+    },
+    "AGENT_00516": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 62.436,
+      "km_limit": 320.0,
+      "total_hours": 2.841,
+      "hour_limit": 14.0
+    },
+    "AGENT_00517": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 66.23,
+      "km_limit": 320.0,
+      "total_hours": 3.0,
+      "hour_limit": 14.0
+    },
+    "AGENT_00518": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 64.822,
+      "km_limit": 320.0,
+      "total_hours": 2.941,
+      "hour_limit": 14.0
+    },
+    "AGENT_00519": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 107.752,
+      "km_limit": 320.0,
+      "total_hours": 4.73,
+      "hour_limit": 14.0
+    },
+    "AGENT_00520": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 65.162,
+      "km_limit": 320.0,
+      "total_hours": 2.955,
+      "hour_limit": 14.0
+    },
+    "AGENT_00531": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 66.436,
+      "km_limit": 320.0,
+      "total_hours": 3.008,
+      "hour_limit": 14.0
+    },
+    "AGENT_00532": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 63.581,
+      "km_limit": 320.0,
+      "total_hours": 2.889,
+      "hour_limit": 14.0
+    },
+    "AGENT_00533": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 66.594,
+      "km_limit": 320.0,
+      "total_hours": 3.015,
+      "hour_limit": 14.0
+    },
+    "AGENT_00534": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 62.82,
+      "km_limit": 320.0,
+      "total_hours": 2.858,
+      "hour_limit": 14.0
+    },
+    "AGENT_00535": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 67.918,
+      "km_limit": 320.0,
+      "total_hours": 3.07,
+      "hour_limit": 14.0
+    },
+    "AGENT_00536": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 62.535,
+      "km_limit": 320.0,
+      "total_hours": 2.846,
+      "hour_limit": 14.0
+    },
+    "AGENT_00537": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 64.112,
+      "km_limit": 320.0,
+      "total_hours": 2.911,
+      "hour_limit": 14.0
+    },
+    "AGENT_00538": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 62.296,
+      "km_limit": 320.0,
+      "total_hours": 2.836,
+      "hour_limit": 14.0
+    },
+    "AGENT_00539": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 80.53,
+      "km_limit": 320.0,
+      "total_hours": 3.595,
+      "hour_limit": 14.0
+    },
+    "AGENT_00540": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 61.999,
+      "km_limit": 320.0,
+      "total_hours": 2.823,
+      "hour_limit": 14.0
+    },
+    "AGENT_00541": {
+      "vehicle_type": "VT_ABD",
+      "tasks": 1,
+      "total_km": 65.647,
+      "km_limit": 320.0,
+      "total_hours": 2.975,
+      "hour_limit": 14.0
+    },
+    "AGENT_00617": {
+      "vehicle_type": "VT_AD",
+      "tasks": 3,
+      "total_km": 58.976,
+      "km_limit": 280.0,
+      "total_hours": 2.988,
+      "hour_limit": 14.0
+    },
+    "AGENT_00618": {
+      "vehicle_type": "VT_AD",
+      "tasks": 2,
+      "total_km": 57.237,
+      "km_limit": 280.0,
+      "total_hours": 2.681,
+      "hour_limit": 14.0
+    },
+    "AGENT_00619": {
+      "vehicle_type": "VT_AD",
+      "tasks": 5,
+      "total_km": 64.547,
+      "km_limit": 280.0,
+      "total_hours": 3.683,
+      "hour_limit": 14.0
+    },
+    "AGENT_00620": {
+      "vehicle_type": "VT_AD",
+      "tasks": 4,
+      "total_km": 58.453,
+      "km_limit": 280.0,
+      "total_hours": 3.208,
+      "hour_limit": 14.0
+    },
+    "AGENT_00621": {
+      "vehicle_type": "VT_AD",
+      "tasks": 3,
+      "total_km": 78.629,
+      "km_limit": 280.0,
+      "total_hours": 3.744,
+      "hour_limit": 14.0
+    },
+    "AGENT_00622": {
+      "vehicle_type": "VT_AD",
+      "tasks": 4,
+      "total_km": 55.941,
+      "km_limit": 280.0,
+      "total_hours": 3.112,
+      "hour_limit": 14.0
+    },
+    "AGENT_00623": {
+      "vehicle_type": "VT_AD",
+      "tasks": 3,
+      "total_km": 62.797,
+      "km_limit": 280.0,
+      "total_hours": 3.135,
+      "hour_limit": 14.0
+    }
+  }
+}

@@ -1,0 +1,7 @@
+mode,capacity_policy,total_tasks_before,total_tasks_after,reduction_ratio,total_mass_tons,avg_batch_fill_ratio,full_batches,partial_batches,groups_total,groups_ge_capacity,agents_total,trips_per_agent,km_lower_bound,km_capacity_total,km_lb_to_capacity_ratio,hours_lower_bound,hours_capacity_total,hours_lb_to_capacity_ratio
+source_container_dest,max,29518,20786,1.4201,11731.35,0.013,0,20786,20786,0,626,33.204,551857.448,84520.0,6.5293,28877.255,6260.0,4.613
+source_container_dest,p75,29518,20792,1.4197,11731.35,0.0487,6,20786,20786,6,626,33.214,551930.418,84520.0,6.5302,28882.284,6260.0,4.6138
+source_container_dest,median,29518,20801,1.4191,11731.35,0.0686,15,20786,20786,10,626,33.228,552077.2,84520.0,6.5319,28891.718,6260.0,4.6153
+source_container,max,29518,12907,2.287,11731.35,0.0195,0,12907,12907,0,626,20.618,347997.078,84520.0,4.1173,18212.998,6260.0,2.9094
+source_container,p75,29518,12914,2.2857,11731.35,0.0767,7,12907,12907,7,626,20.629,348113.023,84520.0,4.1187,18220.04,6260.0,2.9105
+source_container,median,29518,12928,2.2833,11731.35,0.1083,21,12907,12907,16,626,20.652,348372.065,84520.0,4.1218,18235.928,6260.0,2.9131

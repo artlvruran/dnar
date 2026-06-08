@@ -1,0 +1,80 @@
+{
+  "created_at": "2026-04-02T18:29:57",
+  "day_load_root": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles",
+  "datasets": [
+    {
+      "tag": "u50",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u50/dataset_real_spb_day_u50.json",
+      "tasks_total": 1587,
+      "agents_total": 626,
+      "target_utilization": 0.5
+    },
+    {
+      "tag": "u90",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u90/dataset_real_spb_day_u90.json",
+      "tasks_total": 3737,
+      "agents_total": 626,
+      "target_utilization": 0.9
+    }
+  ],
+  "methods": [
+    "real_stochastic_grasp"
+  ],
+  "timeout_sec": 600,
+  "capacity_scale": 3.0,
+  "params": {
+    "gap_iter": 20,
+    "milp_time_limit_sec": 300,
+    "genetic_population": 30,
+    "genetic_generations": 60,
+    "genetic_generation_scale": 0.15,
+    "genetic_elite": 4,
+    "stochastic_budget_sec": 180,
+    "stochastic_candidate_k": 48,
+    "stochastic_rcl_size": 8,
+    "stochastic_batch_size": 1000,
+    "seed": 42
+  },
+  "results": [
+    {
+      "dataset_tag": "u50",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u50/dataset_real_spb_day_u50.json",
+      "tasks_total": 1587,
+      "agents_total": 626,
+      "target_utilization": 0.5,
+      "algorithm": "real_stochastic_grasp",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 0,
+      "unassigned_tasks": 1587,
+      "active_agents": 0,
+      "transport_work_ton_km": null,
+      "total_km": null,
+      "deadhead_km": null,
+      "deadhead_share_pct": null,
+      "total_hours": null,
+      "runtime_sec": 1.023,
+      "solver_error": "TypeError: run_real_stochastic_grasp() got an unexpected keyword argument '__capacity_scale'"
+    },
+    {
+      "dataset_tag": "u90",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u90/dataset_real_spb_day_u90.json",
+      "tasks_total": 3737,
+      "agents_total": 626,
+      "target_utilization": 0.9,
+      "algorithm": "real_stochastic_grasp",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 0,
+      "unassigned_tasks": 3737,
+      "active_agents": 0,
+      "transport_work_ton_km": null,
+      "total_km": null,
+      "deadhead_km": null,
+      "deadhead_share_pct": null,
+      "total_hours": null,
+      "runtime_sec": 0.972,
+      "solver_error": "TypeError: run_real_stochastic_grasp() got an unexpected keyword argument '__capacity_scale'"
+    }
+  ]
+}

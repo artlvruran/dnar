@@ -1,0 +1,341 @@
+{
+  "created_at": "2026-04-01T16:39:08",
+  "notebook": "real_full_29k_3algo_benchmark.ipynb",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/real_simple/dataset_real_spb_simple.json",
+  "config": {
+    "run_gap": true,
+    "run_milp": false,
+    "run_genetic": false,
+    "gap_step1_method": "lp",
+    "gap_iter": 20,
+    "max_agents": null,
+    "rmilp_time_limit_sec": 60,
+    "rmilp_unassigned_penalty": 100000.0,
+    "ga_population_size": 40,
+    "ga_generations": 60,
+    "ga_elite_size": 4,
+    "ga_seed": 42,
+    "show_algo_progress": true,
+    "show_solver_details": false
+  },
+  "results": [
+    {
+      "algorithm": "real_gap_vrp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/real_simple/dataset_real_spb_simple.json",
+      "feasible": true,
+      "all_checks_ok": true,
+      "assigned_routes": 30,
+      "unassigned_tasks": 0,
+      "active_agents": 10,
+      "transport_work_ton_km": 48.207,
+      "total_km": 466.695,
+      "deadhead_km": 292.137,
+      "deadhead_share_pct": 62.597,
+      "total_hours": 27.035,
+      "runtime_sec": 8.242,
+      "checks": {
+        "hard_constraints_ok": true,
+        "daily_limits_ok": true,
+        "reachability_ok": true,
+        "all_tasks_assigned": true,
+        "mno_coverage_ok": true,
+        "all_checks_ok": true
+      },
+      "agent_solution_rows": [
+        {
+          "agent_id": "AGENT_00125",
+          "vehicle_type": "VT_AD",
+          "is_compact": true,
+          "capacity_tons": 5.0,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 52.678,
+          "task_km": 19.569,
+          "deadhead_km": 33.109,
+          "deadhead_share_pct": 62.852,
+          "total_hours": 3.674,
+          "drive_hours": 2.394,
+          "service_hours": 1.28,
+          "km_limit": 120.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0009",
+            "LP_T0024",
+            "LP_T0022",
+            "LP_T0028"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0026",
+            "GAP_ROUTE_0027",
+            "GAP_ROUTE_0028",
+            "GAP_ROUTE_0029"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00003",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 2.5,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 52.862,
+          "task_km": 19.974,
+          "deadhead_km": 32.888,
+          "deadhead_share_pct": 62.215,
+          "total_hours": 3.083,
+          "drive_hours": 2.203,
+          "service_hours": 0.88,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0017",
+            "LP_T0005",
+            "LP_T0019",
+            "LP_T0002"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0009",
+            "GAP_ROUTE_0010",
+            "GAP_ROUTE_0011",
+            "GAP_ROUTE_0012"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00002",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 5.875,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 53.577,
+          "task_km": 22.893,
+          "deadhead_km": 30.684,
+          "deadhead_share_pct": 57.271,
+          "total_hours": 3.112,
+          "drive_hours": 2.232,
+          "service_hours": 0.88,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0025",
+            "LP_T0004",
+            "LP_T0006",
+            "LP_T0027"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0005",
+            "GAP_ROUTE_0006",
+            "GAP_ROUTE_0007",
+            "GAP_ROUTE_0008"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00001",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 7.5,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 56.145,
+          "task_km": 20.669,
+          "deadhead_km": 35.476,
+          "deadhead_share_pct": 63.186,
+          "total_hours": 3.219,
+          "drive_hours": 2.339,
+          "service_hours": 0.88,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0001",
+            "LP_T0007",
+            "LP_T0010",
+            "LP_T0016"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0001",
+            "GAP_ROUTE_0002",
+            "GAP_ROUTE_0003",
+            "GAP_ROUTE_0004"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00004",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 7.3,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 67.816,
+          "task_km": 32.267,
+          "deadhead_km": 35.55,
+          "deadhead_share_pct": 52.42,
+          "total_hours": 3.706,
+          "drive_hours": 2.826,
+          "service_hours": 0.88,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0020",
+            "LP_T0014",
+            "LP_T0003",
+            "LP_T0008"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0013",
+            "GAP_ROUTE_0014",
+            "GAP_ROUTE_0015",
+            "GAP_ROUTE_0016"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00005",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 7.0,
+          "depot_node": "1398004896",
+          "tasks_count": 4,
+          "routes_count": 4,
+          "total_mass_tons": 0,
+          "total_km": 67.835,
+          "task_km": 33.199,
+          "deadhead_km": 34.637,
+          "deadhead_share_pct": 51.06,
+          "total_hours": 3.706,
+          "drive_hours": 2.826,
+          "service_hours": 0.88,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0012",
+            "LP_T0011",
+            "LP_T0021",
+            "LP_T0013"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0017",
+            "GAP_ROUTE_0018",
+            "GAP_ROUTE_0019",
+            "GAP_ROUTE_0020"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00033",
+          "vehicle_type": "VT_AB",
+          "is_compact": true,
+          "capacity_tons": 8.0,
+          "depot_node": "1398004896",
+          "tasks_count": 3,
+          "routes_count": 3,
+          "total_mass_tons": 0,
+          "total_km": 32.179,
+          "task_km": 6.559,
+          "deadhead_km": 25.619,
+          "deadhead_share_pct": 79.616,
+          "total_hours": 2.061,
+          "drive_hours": 1.341,
+          "service_hours": 0.72,
+          "km_limit": 140.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0000",
+            "LP_T0029",
+            "LP_T0023"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0022",
+            "GAP_ROUTE_0023",
+            "GAP_ROUTE_0024"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00158",
+          "vehicle_type": "VT_C",
+          "is_compact": false,
+          "capacity_tons": 19.0,
+          "depot_node": "1398004896",
+          "tasks_count": 1,
+          "routes_count": 1,
+          "total_mass_tons": 0,
+          "total_km": 26.402,
+          "task_km": 5.507,
+          "deadhead_km": 20.895,
+          "deadhead_share_pct": 79.142,
+          "total_hours": 1.55,
+          "drive_hours": 1.2,
+          "service_hours": 0.35,
+          "km_limit": 140.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0018"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0030"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00006",
+          "vehicle_type": "VT_A",
+          "is_compact": true,
+          "capacity_tons": 6.0,
+          "depot_node": "1398004896",
+          "tasks_count": 1,
+          "routes_count": 1,
+          "total_mass_tons": 0,
+          "total_km": 28.48,
+          "task_km": 7.747,
+          "deadhead_km": 20.733,
+          "deadhead_share_pct": 72.797,
+          "total_hours": 1.407,
+          "drive_hours": 1.187,
+          "service_hours": 0.22,
+          "km_limit": 130.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0026"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0021"
+          ]
+        },
+        {
+          "agent_id": "AGENT_00034",
+          "vehicle_type": "VT_AB",
+          "is_compact": true,
+          "capacity_tons": 8.0,
+          "depot_node": "1398004896",
+          "tasks_count": 1,
+          "routes_count": 1,
+          "total_mass_tons": 0,
+          "total_km": 28.719,
+          "task_km": 6.173,
+          "deadhead_km": 22.546,
+          "deadhead_share_pct": 78.504,
+          "total_hours": 1.517,
+          "drive_hours": 1.197,
+          "service_hours": 0.32,
+          "km_limit": 140.0,
+          "hours_limit": 10.0,
+          "task_ids": [
+            "LP_T0015"
+          ],
+          "route_ids": [
+            "GAP_ROUTE_0025"
+          ]
+        }
+      ],
+      "step1_method": "lp",
+      "gap_iter": 20,
+      "used_agents": 64
+    }
+  ]
+}

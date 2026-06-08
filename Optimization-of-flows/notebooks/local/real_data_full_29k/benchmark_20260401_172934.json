@@ -1,0 +1,49 @@
+{
+  "created_at": "2026-04-01T17:29:34",
+  "notebook": "real_full_29k_3algo_benchmark.ipynb",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+  "config": {
+    "selected_algorithms": [
+      "real_milp"
+    ],
+    "gap_step1_method": "lp",
+    "gap_iter": 20,
+    "max_agents": null,
+    "rmilp_time_limit_sec": 60,
+    "rmilp_unassigned_penalty": 100000.0,
+    "ga_population_size": 40,
+    "ga_generations": 60,
+    "ga_elite_size": 4,
+    "ga_seed": 42,
+    "show_algo_progress": true,
+    "show_solver_details": false
+  },
+  "results": [
+    {
+      "algorithm": "real_milp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 0,
+      "unassigned_tasks": 29518,
+      "active_agents": 0,
+      "transport_work_ton_km": null,
+      "total_km": null,
+      "deadhead_km": null,
+      "deadhead_share_pct": null,
+      "total_hours": null,
+      "runtime_sec": 1464.036,
+      "solver_error": "RuntimeError: Real MILP failed (status=1): Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+      "checks": {
+        "hard_constraints_ok": false,
+        "daily_limits_ok": false,
+        "reachability_ok": true,
+        "all_tasks_assigned": false,
+        "mno_coverage_ok": false,
+        "all_checks_ok": false
+      },
+      "time_limit_sec": 60,
+      "unassigned_penalty": 100000.0
+    }
+  ]
+}

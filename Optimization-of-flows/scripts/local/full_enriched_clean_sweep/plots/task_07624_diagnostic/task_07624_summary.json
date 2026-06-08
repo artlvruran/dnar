@@ -1,0 +1,41 @@
+{
+  "dataset": "src/data/real/clean_full_enriched/sweep_7task_7agents/dataset_real_spb_clean_full_enriched_tiny_random_t050_a100p.json",
+  "task_id": "TASK_07624",
+  "task": {
+    "container_type": "C",
+    "mass_tons": 3.445,
+    "volume_raw_m3": 44.915254,
+    "source_node_id": "2474345277",
+    "destination_node_id": "3647825377"
+  },
+  "all_depots_count": 4,
+  "all_agents_count": 626,
+  "compatible_agents_count": 0,
+  "reason_counts": {
+    "vehicle_type": 432,
+    "task_compatible_vehicle_types": 0,
+    "cap_container_types": 0,
+    "mass_capacity": 18,
+    "center_requires_compact": 0,
+    "raw_volume_limit": 174,
+    "body_volume_limit": 2,
+    "compatible": 0
+  },
+  "source_to_destination_km": 15.1767,
+  "best_cycle_depot": {
+    "depot_node": "1903257537",
+    "x": 30.3638185,
+    "y": 59.7950178,
+    "agents_total": 92,
+    "agents_compatible_for_task": 0,
+    "depot_to_source_km": 14.7201,
+    "source_to_depot_km": 14.7201,
+    "depot_to_destination_km": 16.9923,
+    "destination_to_depot_km": 16.9923,
+    "cycle_km_dep_src_dst_dep": 46.8891
+  },
+  "outputs": {
+    "map_png": "scripts/local/full_enriched_clean_sweep/plots/task_07624_diagnostic/task_07624_full_map.png",
+    "depots_csv": "scripts/local/full_enriched_clean_sweep/plots/task_07624_diagnostic/task_07624_depots_distances.csv"
+  }
+}

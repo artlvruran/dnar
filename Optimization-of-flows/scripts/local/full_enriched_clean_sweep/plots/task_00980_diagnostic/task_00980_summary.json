@@ -1,0 +1,67 @@
+{
+  "dataset": "src/data/real/clean_full_enriched/sweep_7task_7agents/dataset_real_spb_clean_full_enriched_tiny_random_t050_a100.json",
+  "task_id": "TASK_00980",
+  "task": {
+    "container_type": "D",
+    "mass_tons": 0.23,
+    "volume_raw_m3": 2.998696,
+    "source_node_id": "4809445541",
+    "destination_node_id": "60204809"
+  },
+  "segment_km": {
+    "source_to_destination": 62.4305,
+    "nearest_depot_to_source": {
+      "depot_node": "1533456031",
+      "km": 9.9993
+    },
+    "source_to_nearest_depot": {
+      "depot_node": "1533456031",
+      "km": 9.9993
+    },
+    "nearest_depot_to_destination": {
+      "depot_node": "1746883131",
+      "km": 50.6116
+    },
+    "destination_to_nearest_depot": {
+      "depot_node": "1746883131",
+      "km": 50.6116
+    }
+  },
+  "compatible_agents_count": 18,
+  "single_task_cycle_summary": {
+    "best_cycle_km": 133.316,
+    "best_cycle_hours": 6.3798,
+    "best_agent_id": "AGENT_00524",
+    "best_agent_vehicle_type": "VT_ABD",
+    "best_agent_depot": "1746883131",
+    "best_agent_km_limit": 120.0,
+    "best_agent_hours_limit": 10.0,
+    "cycle_km_min": 133.316,
+    "cycle_km_median": 134.3619,
+    "cycle_km_max": 144.2577,
+    "cycle_hours_min": 6.3798,
+    "cycle_hours_median": 6.4274,
+    "cycle_hours_max": 7.1894,
+    "fully_feasible_count": 0
+  },
+  "all_depots_count": 4,
+  "best_global_cycle_depot": {
+    "depot_node": "1746883131",
+    "x": 30.0026237,
+    "y": 60.0031014,
+    "depot_to_source_km": 20.2739,
+    "source_to_depot_km": 20.2739,
+    "depot_to_destination_km": 50.6116,
+    "destination_to_depot_km": 50.6116,
+    "cycle_km_depot_source_dest_depot": 133.316,
+    "compatible_agents_on_depot": 8
+  },
+  "best_compatible_agent_cycle": {
+    "agent_id": "AGENT_00524",
+    "depot_node": "1746883131",
+    "vehicle_type": "VT_ABD",
+    "cycle_km": 133.316,
+    "km_limit": 120.0
+  },
+  "all_depots_table_csv": "scripts/local/full_enriched_clean_sweep/plots/task_00980_diagnostic/task_00980_all_depots_distances.csv"
+}

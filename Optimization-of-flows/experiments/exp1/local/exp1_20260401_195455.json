@@ -1,0 +1,27 @@
+{
+  "created_at": "2026-04-01T19:54:55",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+  "algorithms": [
+    "real_stochastic_grasp"
+  ],
+  "timeout_sec": 60,
+  "budget_sec": 30,
+  "results": [
+    {
+      "algorithm": "real_stochastic_grasp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 0,
+      "unassigned_tasks": null,
+      "active_agents": 0,
+      "transport_work_ton_km": null,
+      "total_km": null,
+      "deadhead_km": null,
+      "deadhead_share_pct": null,
+      "total_hours": null,
+      "runtime_sec": 60.006,
+      "solver_error": "TimeoutError: exceeded timeout 60s"
+    }
+  ]
+}

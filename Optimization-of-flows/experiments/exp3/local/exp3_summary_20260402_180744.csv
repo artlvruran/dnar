@@ -1,0 +1,2 @@
+algorithm,dataset_tasks,agents_used,active_agents,assigned_tasks,unassigned_tasks,assignment_coverage_pct,feasible,limit_violating_agents,transport_work_ton_km_approx,total_mass_tons_assigned,total_km,total_hours,pickup_km,unload_km,return_km,runtime_sec,params
+exp3_greedy_fill,3737,626,197,1652,2085,44.207,False,0,79376.118,2136.379,20838.331,1364.561,4047.547,8471.568,8319.216,591.751,"{'max_agents': None, 'max_trips_per_agent': 14, 'max_pickups_per_trip': 28, 'shortlist_k': 60}"

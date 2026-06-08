@@ -1,0 +1,7 @@
+status,feasible,all_checks_ok,assigned_tasks,assigned_trips,unassigned_tasks,active_agents,total_km,transport_work_ton_km,runtime_sec,volume_coverage_pct,solver_error,algorithm,task_pct,dataset_file
+ok,False,False,1150,829,90,280,45021.232,2245.703,11.877,96.092,,enriched_milp_decomp_v1,1,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t001_a100.json
+ok,False,False,4539,1720,2900,440,75115.113,9462.894,48.015,68.28,,enriched_milp_decomp_v1,6,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t006_a100.json
+ok,False,False,6362,1977,7276,475,85502.361,13353.237,50.887,57.541,,enriched_milp_decomp_v1,11,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t011_a100.json
+ok,False,False,7645,2237,12192,479,89794.649,15529.306,51.717,50.357,,enriched_milp_decomp_v1,16,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t016_a100.json
+ok,False,False,8468,2196,17568,485,87966.96,17191.531,52.351,44.79,,enriched_milp_decomp_v1,21,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t021_a100.json
+ok,False,False,9053,2199,23182,486,86535.624,17949.741,53.031,39.896,,enriched_milp_decomp_v1,26,dataset_real_spb_clean_full_split_by_containers_all_agents_with_distances_t026_a100.json

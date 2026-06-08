@@ -1,0 +1,43 @@
+{
+  "created_at": "2026-04-01T19:56:04",
+  "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+  "algorithms": [
+    "real_stochastic_grasp"
+  ],
+  "timeout_sec": 60,
+  "budget_sec": 30,
+  "results": [
+    {
+      "algorithm": "real_stochastic_grasp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/full_29k/dataset_real_spb_full_29k.json",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 1623,
+      "unassigned_tasks": 27895,
+      "active_agents": 285,
+      "transport_work_ton_km": 51660.51,
+      "total_km": 35467.901,
+      "deadhead_km": 239.749,
+      "deadhead_share_pct": 0.676,
+      "total_hours": 2006.149,
+      "runtime_sec": 8.437,
+      "checks": {
+        "hard_constraints_ok": false,
+        "daily_limits_ok": false,
+        "reachability_ok": true,
+        "all_tasks_assigned": false,
+        "mno_coverage_ok": false,
+        "all_checks_ok": false
+      },
+      "time_budget_sec": 30,
+      "max_starts": 2,
+      "candidate_k": 15,
+      "rcl_size": 4,
+      "load_penalty": 8.0,
+      "road_factor": 1.25,
+      "trip_share": 0.35,
+      "overload_slack": 1.02,
+      "seed": 42
+    }
+  ]
+}

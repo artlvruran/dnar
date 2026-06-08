@@ -1,0 +1,45 @@
+{
+  "dataset": "src/data/real/clean_full_enriched/sweep_7task_7agents/dataset_real_spb_clean_full_enriched_tiny_random_t050_a050.json",
+  "tasks_total": 50,
+  "agents_total": 50,
+  "milp_status": 0,
+  "milp_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "no_compatible_agents_tasks": [
+    "TASK_07624"
+  ],
+  "no_single_task_pair_tasks": [
+    "TASK_07624"
+  ],
+  "initial_unassigned_count": 6,
+  "final_unassigned_count": 9,
+  "root_reason_counts": {
+    "final_plan_infeasible:km_limit": 3,
+    "left_unassigned_by_milp": 5,
+    "no_compatible_agent": 1
+  },
+  "drop_reason_counter": {
+    "final_plan_infeasible:km_limit": 3
+  },
+  "unassigned_ids": [
+    "TASK_00870",
+    "TASK_00977",
+    "TASK_07056",
+    "TASK_07624",
+    "TASK_08025",
+    "TASK_09013",
+    "TASK_14720",
+    "TASK_17857",
+    "TASK_17871"
+  ],
+  "unassigned_reason_by_task": {
+    "TASK_00870": "final_plan_infeasible:km_limit",
+    "TASK_00977": "left_unassigned_by_milp",
+    "TASK_07056": "left_unassigned_by_milp",
+    "TASK_07624": "no_compatible_agent",
+    "TASK_08025": "final_plan_infeasible:km_limit",
+    "TASK_09013": "left_unassigned_by_milp",
+    "TASK_14720": "left_unassigned_by_milp",
+    "TASK_17857": "final_plan_infeasible:km_limit",
+    "TASK_17871": "left_unassigned_by_milp"
+  }
+}

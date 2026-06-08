@@ -1,0 +1,113 @@
+{
+  "created_at": "2026-04-02T17:40:54",
+  "day_load_root": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles",
+  "datasets": [
+    {
+      "tag": "u50",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u50/dataset_real_spb_day_u50.json",
+      "tasks_total": 1587,
+      "agents_total": 626,
+      "target_utilization": 0.5
+    },
+    {
+      "tag": "u90",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u90/dataset_real_spb_day_u90.json",
+      "tasks_total": 3737,
+      "agents_total": 626,
+      "target_utilization": 0.9
+    }
+  ],
+  "methods": [
+    "real_stochastic_grasp"
+  ],
+  "timeout_sec": 60,
+  "params": {
+    "gap_iter": 20,
+    "milp_time_limit_sec": 300,
+    "genetic_population": 30,
+    "genetic_generations": 60,
+    "genetic_generation_scale": 0.15,
+    "genetic_elite": 4,
+    "stochastic_budget_sec": 20,
+    "stochastic_candidate_k": 12,
+    "stochastic_rcl_size": 4,
+    "stochastic_batch_size": 1000,
+    "seed": 42
+  },
+  "results": [
+    {
+      "algorithm": "real_stochastic_grasp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u50/dataset_real_spb_day_u50.json",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 409,
+      "unassigned_tasks": 1178,
+      "active_agents": 207,
+      "transport_work_ton_km": 28099.07,
+      "total_km": 19894.183,
+      "deadhead_km": 102.025,
+      "deadhead_share_pct": 0.513,
+      "total_hours": 985.486,
+      "runtime_sec": 5.604,
+      "checks": {
+        "hard_constraints_ok": false,
+        "daily_limits_ok": false,
+        "reachability_ok": true,
+        "all_tasks_assigned": false,
+        "mno_coverage_ok": false,
+        "all_checks_ok": false
+      },
+      "time_budget_sec": 20,
+      "max_starts": 3,
+      "candidate_k": 12,
+      "rcl_size": 4,
+      "load_penalty": 8.0,
+      "road_factor": 1.25,
+      "trip_share": 0.35,
+      "overload_slack": 1.02,
+      "seed": 42,
+      "dataset_tag": "u50",
+      "tasks_total": 1587,
+      "agents_total": 626,
+      "target_utilization": 0.5,
+      "assignment_coverage_pct": 25.772
+    },
+    {
+      "algorithm": "real_stochastic_grasp",
+      "dataset_path": "/Users/igoreshka/Desktop/Optimization-of-flows/src/data/real/day_load_profiles/u90/dataset_real_spb_day_u90.json",
+      "feasible": false,
+      "all_checks_ok": false,
+      "assigned_routes": 931,
+      "unassigned_tasks": 2806,
+      "active_agents": 229,
+      "transport_work_ton_km": 40442.841,
+      "total_km": 24188.155,
+      "deadhead_km": 138.023,
+      "deadhead_share_pct": 0.571,
+      "total_hours": 1332.916,
+      "runtime_sec": 5.794,
+      "checks": {
+        "hard_constraints_ok": false,
+        "daily_limits_ok": false,
+        "reachability_ok": true,
+        "all_tasks_assigned": false,
+        "mno_coverage_ok": false,
+        "all_checks_ok": false
+      },
+      "time_budget_sec": 20,
+      "max_starts": 3,
+      "candidate_k": 12,
+      "rcl_size": 4,
+      "load_penalty": 8.0,
+      "road_factor": 1.25,
+      "trip_share": 0.35,
+      "overload_slack": 1.02,
+      "seed": 42,
+      "dataset_tag": "u90",
+      "tasks_total": 3737,
+      "agents_total": 626,
+      "target_utilization": 0.9,
+      "assignment_coverage_pct": 24.913
+    }
+  ]
+}

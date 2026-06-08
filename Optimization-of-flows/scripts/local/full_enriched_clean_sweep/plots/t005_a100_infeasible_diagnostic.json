@@ -1,0 +1,65 @@
+{
+  "dataset": "src/data/real/clean_full_enriched/sweep_7task_7agents/dataset_real_spb_clean_full_enriched_t005_a100.json",
+  "tasks_total": 1476,
+  "agents_total": 626,
+  "no_compatible_agents_tasks": [
+    "TASK_00801",
+    "TASK_01889",
+    "TASK_18009",
+    "TASK_18741",
+    "TASK_19490",
+    "TASK_21967",
+    "TASK_24425"
+  ],
+  "no_single_task_pair_tasks": [
+    "TASK_00801",
+    "TASK_01889",
+    "TASK_18009",
+    "TASK_18741",
+    "TASK_19490",
+    "TASK_21967",
+    "TASK_24425"
+  ],
+  "initial_unassigned_count": 430,
+  "final_unassigned_count": 432,
+  "root_reason_counts": {
+    "left_unassigned_by_milp": 423,
+    "no_compatible_agent": 7,
+    "final_plan_infeasible:km_limit": 2
+  },
+  "drop_reason_counter": {
+    "final_plan_infeasible:km_limit": 2
+  },
+  "final_unassigned_sample": [
+    "TASK_00025",
+    "TASK_00036",
+    "TASK_00070",
+    "TASK_00176",
+    "TASK_00285",
+    "TASK_00358",
+    "TASK_00551",
+    "TASK_00556",
+    "TASK_00700",
+    "TASK_00735",
+    "TASK_00792",
+    "TASK_00801",
+    "TASK_00822",
+    "TASK_00908",
+    "TASK_01002",
+    "TASK_01072",
+    "TASK_01142",
+    "TASK_01276",
+    "TASK_01316",
+    "TASK_01320",
+    "TASK_01338",
+    "TASK_01463",
+    "TASK_01481",
+    "TASK_01499",
+    "TASK_01852",
+    "TASK_01889",
+    "TASK_01907",
+    "TASK_01976",
+    "TASK_02062",
+    "TASK_02279"
+  ]
+}

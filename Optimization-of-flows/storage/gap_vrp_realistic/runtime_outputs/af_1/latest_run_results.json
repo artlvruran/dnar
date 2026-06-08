@@ -1,0 +1,32 @@
+[
+  {
+    "day": 1,
+    "status": "feasible",
+    "assigned_routes": 220,
+    "unassigned_tasks": 0,
+    "active_agents": 172,
+    "transport_work_ton_km": 689.053,
+    "all_checks_ok": true,
+    "output_dir": "/Users/igoreshka/Desktop/GarbageOpt/data/realistic_spb_real_notebook_data/runtime_outputs/af_1/day_001"
+  },
+  {
+    "day": 2,
+    "status": "feasible",
+    "assigned_routes": 220,
+    "unassigned_tasks": 0,
+    "active_agents": 173,
+    "transport_work_ton_km": 684.561,
+    "all_checks_ok": true,
+    "output_dir": "/Users/igoreshka/Desktop/GarbageOpt/data/realistic_spb_real_notebook_data/runtime_outputs/af_1/day_002"
+  },
+  {
+    "day": 3,
+    "status": "feasible",
+    "assigned_routes": 220,
+    "unassigned_tasks": 0,
+    "active_agents": 172,
+    "transport_work_ton_km": 686.34,
+    "all_checks_ok": true,
+    "output_dir": "/Users/igoreshka/Desktop/GarbageOpt/data/realistic_spb_real_notebook_data/runtime_outputs/af_1/day_003"
+  }
+]
