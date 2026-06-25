@@ -36,14 +36,33 @@ def _i(x: Any) -> int | None:
         return None
 
 
+def _container_token(raw: Any) -> str:
+    c = str(raw or "A").strip()
+    legacy_map = {
+        "Type1": "A",
+        "Type2": "B",
+        "Type3": "C",
+        "type1": "A",
+        "type2": "B",
+        "type3": "C",
+    }
+    return legacy_map.get(c, c)
+
+
 def _req_types(raw_task: dict[str, Any]) -> tuple[str, ...]:
     req = raw_task.get("required_container_types")
     if isinstance(req, list) and req:
-        return tuple(sorted(str(v) for v in req))
-    c = str(raw_task.get("container_type", "A"))
+        return tuple(sorted(_container_token(v) for v in req))
+    c = _container_token(raw_task.get("container_type", "A"))
     if c in {"A+B", "A+C", "B+C", "A+B+C"}:
         return tuple(c.split("+"))
     return (c,)
+
+
+def _bool_field(raw: dict[str, Any], key: str, default: bool = False) -> bool:
+    if key not in raw:
+        return default
+    return bool(raw.get(key))
 
 
 def _service_hours(task: VolumeTask, service_map: dict[str, float]) -> float:
@@ -82,7 +101,10 @@ class VolumeDataset:
                 kind=str(n.get("kind", "")),
                 x=_f(n.get("x"), 0.0),
                 y=_f(n.get("y"), 0.0),
-                object_day_capacity_volume_m3=_f(n.get("object_day_capacity_volume_m3"), 0.0),
+                object_day_capacity_volume_m3=_f(
+                    n.get("object_day_capacity_volume_m3"),
+                    _f(n.get("object_day_capacity_tons"), 0.0),
+                ),
             )
             nodes[nid] = node
             g.add_node(nid)
@@ -103,11 +125,11 @@ class VolumeDataset:
                     source_node_id=str(t.get("source_node_id")),
                     destination_node_id=str(t.get("destination_node_id")),
                     source_zone_num=_i(t.get("source_zone_num")),
-                    volume_raw_m3=_f(t.get("volume_raw_m3"), 0.0),
+                    volume_raw_m3=_f(t.get("volume_raw_m3"), _f(t.get("mass_tons"), 0.0)),
                     is_compactable=bool(t.get("is_compactable", False)),
                     requires_compact_d=bool(t.get("requires_compact_d", False)),
                     required_container_types=_req_types(t),
-                    container_type=str(t.get("container_type", "A")),
+                    container_type=_container_token(t.get("container_type", "A")),
                 )
             )
 
@@ -122,7 +144,7 @@ class VolumeDataset:
             max_hours = _f(a.get("max_hours"), _f(pf.get("max_shift_hours"), 10.0))
             max_km = _f(a.get("max_daily_km"), _f(pf.get("max_daily_km"), 260.0))
             speed = _f(a.get("avg_speed_kmph"), _f(pf.get("avg_speed_kmph"), 35.0))
-            raw_lim = _f(a.get("max_raw_volume_m3"), 0.0)
+            raw_lim = _f(a.get("max_raw_volume_m3"), _f(a.get("capacity_tons"), 0.0))
             if raw_lim <= 0:
                 body = _f(a.get("body_volume_m3"), 0.0)
                 comp = max(1.0, _f(a.get("compaction_coeff"), 1.0))
@@ -130,13 +152,17 @@ class VolumeDataset:
             agents.append(
                 VolumeAgent(
                     agent_id=aid,
-                    depot_node_id=str(a.get("depot_node_id")) if a.get("depot_node_id") is not None else None,
+                    depot_node_id=str(
+                        a.get("depot_node_id", (md.get("agent_depots") or {}).get(aid))
+                    )
+                    if a.get("depot_node_id", (md.get("agent_depots") or {}).get(aid)) is not None
+                    else None,
                     zone_num=_i(a.get("zone_num")),
-                    is_active=bool(a.get("is_active_work_1st_shoulder", False)),
-                    cap_a=bool(a.get("cap_container_A", False)),
-                    cap_b=bool(a.get("cap_container_B", False)),
-                    cap_c=bool(a.get("cap_container_C", False)),
-                    cap_d=bool(a.get("cap_container_D", False)),
+                    is_active=_bool_field(a, "is_active_work_1st_shoulder", True),
+                    cap_a=_bool_field(a, "cap_container_A", True),
+                    cap_b=_bool_field(a, "cap_container_B", True),
+                    cap_c=_bool_field(a, "cap_container_C", True),
+                    cap_d=_bool_field(a, "cap_container_D", bool(a.get("is_compact", False))),
                     compaction_coeff=max(1.0, _f(a.get("compaction_coeff"), 1.0)),
                     max_raw_volume_m3=max(0.0, raw_lim),
                     max_hours=max(0.0, max_hours),
